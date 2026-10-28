@@ -37,10 +37,12 @@ internal sealed class StbConnection(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         X509Certificate2 certificate;
+        string certPath = ResolvePath(_options.CertificatePath, "client_cert.pem");
+        string keyPath = ResolvePath(_options.PrivateKeyPath, "client_key.pem");
 
         try
         {
-            certificate = Certificates.LoadClientCertificate(_options.CertificatePath, _options.PrivateKeyPath);
+            certificate = Certificates.LoadClientCertificate(certPath, keyPath);
         }
         catch (Exception ex)
         {
@@ -51,8 +53,8 @@ internal sealed class StbConnection(
                 ex,
                 "Could not load the client certificate ({CertificatePath} / {PrivateKeyPath}). " +
                 "Pair first with: dotnet run --project src/StbLab.Cli -- pair",
-                _options.CertificatePath,
-                _options.PrivateKeyPath);
+                certPath,
+                keyPath);
             return;
         }
 
@@ -110,5 +112,25 @@ internal sealed class StbConnection(
         {
             _client = null;
         }
+    }
+
+    private static string ResolvePath(string? path, string defaultFileName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "stb-lab",
+                defaultFileName);
+        }
+
+        if (path.StartsWith("~/") || path.StartsWith("~\\"))
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                path[2..]);
+        }
+
+        return path;
     }
 }

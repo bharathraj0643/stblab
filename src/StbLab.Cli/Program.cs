@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography.X509Certificates;
 using StbLab.Protocol;
 
 // Command-line front end for the protocol library: pair, inspect state, and send keys
@@ -14,34 +14,33 @@ string host = Environment.GetEnvironmentVariable("STB_HOST") ?? DefaultHost;
 string certPath = Path.Combine(labDir, "client_cert.pem");
 string keyPath = Path.Combine(labDir, "client_key.pem");
 
-List<string> arguments = [.. args];
-for (int i = 0; i < arguments.Count; i++)
+List<string> remainingArgs = [];
+for (int i = 0; i < args.Length; i++)
 {
-    switch (arguments[i])
+    switch (args[i])
     {
-        case "--host" when i + 1 < arguments.Count:
-            host = arguments[++i];
+        case "--host" when i + 1 < args.Length:
+            host = args[++i];
             break;
-        case "--dir" when i + 1 < arguments.Count:
-            labDir = arguments[++i];
+        case "--dir" when i + 1 < args.Length:
+            labDir = args[++i];
             certPath = Path.Combine(labDir, "client_cert.pem");
             keyPath = Path.Combine(labDir, "client_key.pem");
             break;
         default:
-            continue;
+            remainingArgs.Add(args[i]);
+            break;
     }
-
-    arguments.RemoveAt(i--);
 }
 
-if (arguments.Count == 0)
+if (remainingArgs.Count == 0)
 {
     PrintUsage();
     return 1;
 }
 
-string command = arguments[0];
-string[] rest = [.. arguments.Skip(1)];
+string command = remainingArgs[0];
+string[] rest = [.. remainingArgs.Skip(1)];
 
 try
 {
@@ -113,6 +112,10 @@ try
 catch (Exception ex)
 {
     Console.Error.WriteLine($"error: {ex.Message}");
+    if (ex is not PairingException)
+    {
+        Console.Error.WriteLine(ex.StackTrace);
+    }
     return 2;
 }
 

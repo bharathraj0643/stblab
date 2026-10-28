@@ -256,8 +256,11 @@ public sealed class PairingClient(string host, string clientName, X509Certificat
     private Task SendOptionsAsync()
     {
         OuterMessage message = NewMessage();
-        message.Options.PreferredRole = Options.Types.RoleType.Input;
-        message.Options.InputEncodings.Add(HexEncoding());
+        message.Options = new Options
+        {
+            PreferredRole = Options.Types.RoleType.Input,
+            InputEncodings = { HexEncoding() },
+        };
 
         return SendAsync(message);
     }
@@ -265,8 +268,11 @@ public sealed class PairingClient(string host, string clientName, X509Certificat
     private Task SendConfigurationAsync()
     {
         OuterMessage message = NewMessage();
-        message.Configuration.ClientRole = Options.Types.RoleType.Input;
-        message.Configuration.Encoding = HexEncoding();
+        message.Configuration = new Configuration
+        {
+            ClientRole = Options.Types.RoleType.Input,
+            Encoding = HexEncoding(),
+        };
 
         return SendAsync(message);
     }
