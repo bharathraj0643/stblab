@@ -51,4 +51,14 @@ public sealed class RemoteController(IStbRemoteService remote) : ControllerBase
         LaunchRequest request,
         CancellationToken cancellationToken) =>
         Ok(await remote.LaunchAsync(request, cancellationToken));
+
+    /// <summary>Tunes a channel by triggering TV key and typing the redirect number.</summary>
+    [HttpPost("tune")]
+    [ProducesResponseType(typeof(TuneAcknowledgment), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<TuneAcknowledgment>> Tune(
+        TuneRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await remote.TuneAsync(request, cancellationToken));
 }

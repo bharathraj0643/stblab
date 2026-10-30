@@ -122,6 +122,48 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
         return new LaunchAcknowledgment(app);
     }
 
+    public async Task<TuneAcknowledgment> TuneAsync(TuneRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        RemoteClient client = connection.RequireClient();
+
+        try
+        {
+            // 1. Send TV key to bring Live TV into foreground
+            await client.SendKeyAsync(RemoteKeyCode.KeycodeTv);
+
+            // 2. Wait 3 seconds for Live TV to open and be ready to receive input
+            await Task.Delay(3000, cancellationToken);
+
+            // 3. Send redirect number as text input or sequential numeric keys
+            string digits = request.RedirectNumber.ToString();
+            try
+            {
+                await client.SendTextAsync(digits);
+            }
+            catch
+            {
+                // Fallback to individual numeric key codes if IME is not active
+                foreach (char ch in digits)
+                {
+                    if (KeyCodes.TryResolve($"NUM_{ch}", out RemoteKeyCode digitCode) ||
+                        KeyCodes.TryResolve($"{ch}", out digitCode))
+                    {
+                        await client.SendKeyAsync(digitCode);
+                        await Task.Delay(150, cancellationToken);
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not StbException)
+        {
+            throw new StbUnreachableException($"Could not tune channel {request.RedirectNumber}: {ex.Message}", ex);
+        }
+
+        return new TuneAcknowledgment(request.RedirectNumber, request.ChannelName);
+    }
+
     private bool HasClient() => connection.CertificateFailed == false && ClientIsLive();
 
     private bool ClientIsLive()

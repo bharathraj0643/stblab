@@ -1,11 +1,17 @@
+using StbLab.Api.Database;
 using StbLab.Api.Extensions;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// ── Database initialization ──────────────────────────────────────────────────────────────────
+DbInitializer.Initialize();
 
 // ── Application layer ──────────────────────────────────────────────────────────────────────────
 builder.Services
     .AddStbOptions(builder.Configuration)
     .AddStbRemoteService();
+
+builder.Services.AddSingleton<ChannelRepository>();
 
 // ── Web layer ──────────────────────────────────────────────────────────────────────────────────
 builder.Services

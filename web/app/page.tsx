@@ -1,437 +1,562 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  getState,
-  launchApp,
-  sendKey,
-  sendText,
-  type KeyDirection,
+  type Genre,
+  type Channel,
   type StbState,
+  getGenres,
+  getState,
+  tuneChannel,
 } from "@/lib/api";
+import EditModal from "./components/EditModal";
 
-const POLL_MS = 2000;
-const HOLD_MS = 180;
+const CHANNELS_PER_PAGE = 7;
+const CHORD_THRESHOLD_MS = 250;
+const DIAL_TIMEOUT_MS = 3000;
+const STATE_POLL_MS = 3000;
 
-type AppEntry =
-  | { label: string; kind: "link"; uri: string }
-  | { label: string; kind: "key"; key: string };
+export default function ChannelPickerPage() {
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [stbState, setStbState] = useState<StbState | null>(null);
 
-const COMMON_APPS: AppEntry[] = [
-  { label: "YouTube", kind: "link", uri: "https://www.youtube.com/tv" },
-  { label: "Netflix", kind: "link", uri: "https://www.netflix.com/browse" },
-  { label: "Prime Video", kind: "link", uri: "https://app.primevideo.com/" },
-  { label: "Hotstar", kind: "link", uri: "https://www.hotstar.com" },
-  { label: "Xstream", kind: "key", key: "TV" },
-  { label: "Spotify", kind: "link", uri: "market://search?q=spotify" },
-];
+  // Column focus: "genre" (parent) or "channels" (children)
+  const [focusedColumn, setFocusedColumn] = useState<"genre" | "channels">("channels");
 
-/** Mirrors what a physical remote gives you for free. */
-const KEY_BINDINGS: Record<string, string> = {
-  ArrowUp: "DPAD_UP",
-  ArrowDown: "DPAD_DOWN",
-  ArrowLeft: "DPAD_LEFT",
-  ArrowRight: "DPAD_RIGHT",
-  Enter: "DPAD_CENTER",
-  Backspace: "BACK",
-  Escape: "BACK",
-  " ": "MEDIA_PLAY_PAUSE",
-  m: "VOLUME_MUTE",
-  p: "POWER",
-  "+": "VOLUME_UP",
-  "=": "VOLUME_UP",
-  "-": "VOLUME_DOWN",
-  "_": "VOLUME_DOWN",
-};
+  // Selection states
+  // Point 1: On load, always first genre is selected, first channel is hovered.
+  // selectedChannelIndex is null until the user presses ChannelDown.
+  const [selectedGenreIndex, setSelectedGenreIndex] = useState<number>(0);
+  const [hoveredChannelIndex, setHoveredChannelIndex] = useState<number>(0);
+  const [selectedChannelIndex, setSelectedChannelIndex] = useState<number | null>(null);
 
-type KeyProps = {
-  flash: string | null;
-  disabled: boolean;
-  onPress: (key: string) => void;
-  onStartHold: (key: string) => void;
-  onStopHold: () => void;
-};
+  // Direct number dialing state (Point 5)
+  const [dialBuffer, setDialBuffer] = useState<string>("");
+  const [dialProgress, setDialProgress] = useState<number>(100);
+  const dialTimerRef = useRef<number | null>(null);
+  const dialIntervalRef = useRef<number | null>(null);
 
-type RemoteKeyProps = KeyProps & {
-  label: string;
-  keyName: string;
-  /** Hold-to-repeat, for rockers like volume and channel. */
-  repeat?: boolean;
-  className?: string;
-  title?: string;
-};
+  // Tuning status
+  const [tuningStatus, setTuningStatus] = useState<string | null>(null);
+  const [lastTuned, setLastTuned] = useState<string | null>(null);
 
-function RemoteKey({
-  label,
-  keyName,
-  flash,
-  disabled,
-  onPress,
-  onStartHold,
-  onStopHold,
-  repeat = false,
-  className,
-  title,
-}: RemoteKeyProps) {
-  const interaction: React.ComponentProps<"button"> = repeat
-    ? {
-        onPointerDown: (event) => {
-          // Suppress the default so a long press does not start a text selection or drag.
-          event.preventDefault();
-          onStartHold(keyName);
-        },
-        onPointerUp: onStopHold,
-        onPointerLeave: onStopHold,
-        onPointerCancel: onStopHold,
-      }
-    : { onClick: () => onPress(keyName) };
+  // Edit UI modal state (Point 6)
+  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
 
-  return (
-    <button
-      type="button"
-      className={`key${className ? ` ${className}` : ""}`}
-      title={title ?? keyName}
-      disabled={disabled}
-      data-flash={flash === keyName ? "true" : undefined}
-      {...interaction}
-    >
-      {label}
-    </button>
-  );
-}
+  // Chording detection refs (Point 3)
+  const lastChUpRef = useRef<number>(0);
+  const lastChDownRef = useRef<number>(0);
+  const isChordHandledRef = useRef<boolean>(false);
 
-export default function RemotePage() {
-  const [state, setState] = useState<StbState | null>(null);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [text, setText] = useState("");
-  const [app, setApp] = useState("");
-  const [flash, setFlash] = useState<string | null>(null);
-
-  const holdTimer = useRef<number | null>(null);
-  const flashTimer = useRef<number | null>(null);
-
-  const press = useCallback((key: string, direction: KeyDirection = "SHORT") => {
-    setFlash(key);
-
-    if (flashTimer.current !== null) {
-      window.clearTimeout(flashTimer.current);
-    }
-
-    flashTimer.current = window.setTimeout(() => setFlash(null), 140);
-
-    void sendKey(key, direction)
-      .then(() => setActionError(null))
-      .catch((cause: unknown) =>
-        setActionError(cause instanceof Error ? cause.message : String(cause)),
-      );
-  }, []);
-
-  const stopHold = useCallback(() => {
-    if (holdTimer.current !== null) {
-      window.clearInterval(holdTimer.current);
-      holdTimer.current = null;
+  // Fetch genres from SQLite backend
+  const loadGenres = useCallback(async () => {
+    try {
+      const data = await getGenres();
+      setGenres(data);
+    } catch (err) {
+      console.error("Failed to load genres:", err);
     }
   }, []);
 
-  const startHold = useCallback(
-    (key: string) => {
-      press(key);
-      stopHold();
-
-      // The protocol sends discrete presses, so a "held" rocker is repeated presses.
-      holdTimer.current = window.setInterval(() => press(key), HOLD_MS);
-    },
-    [press, stopHold],
-  );
-
-  // Poll the device. Only GET /state is polled — the write endpoints are driven by the user.
   useEffect(() => {
-    let cancelled = false;
+    void loadGenres();
+  }, [loadGenres]);
 
-    const tick = async () => {
+  // Poll STB state for telemetry
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
       try {
         const next = await getState();
-
-        if (!cancelled) {
-          setState(next);
-          setLinkError(null);
-        }
-      } catch (cause) {
-        if (!cancelled) {
-          setLinkError(cause instanceof Error ? cause.message : String(cause));
-        }
+        if (active) setStbState(next);
+      } catch {
+        // silent on telemetry poll failure
       }
     };
 
-    void tick();
-    const id = window.setInterval(tick, POLL_MS);
-
+    void poll();
+    const id = window.setInterval(poll, STATE_POLL_MS);
     return () => {
-      cancelled = true;
+      active = false;
       window.clearInterval(id);
     };
   }, []);
 
-  useEffect(() => stopHold, [stopHold]);
+  // Safe active genre
+  const currentGenre = useMemo(() => {
+    if (genres.length === 0) return null;
+    const idx = Math.max(0, Math.min(selectedGenreIndex, genres.length - 1));
+    return genres[idx];
+  }, [genres, selectedGenreIndex]);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
+  const currentChannels = useMemo(() => {
+    return currentGenre?.channels || [];
+  }, [currentGenre]);
 
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") {
+  // Point 2: Chunked / Paged list for viewport height
+  // The active channel index is either selected or hovered
+  const activeChannelIdx = selectedChannelIndex ?? hoveredChannelIndex;
+  const currentChunkIndex = Math.floor(activeChannelIdx / CHANNELS_PER_PAGE);
+  const totalChunks = Math.max(1, Math.ceil(currentChannels.length / CHANNELS_PER_PAGE));
+
+  const visibleChannels = useMemo(() => {
+    const start = currentChunkIndex * CHANNELS_PER_PAGE;
+    return currentChannels.slice(start, start + CHANNELS_PER_PAGE);
+  }, [currentChannels, currentChunkIndex]);
+
+  // Point 7: Main Backend Tuning Logic
+  const handleTune = useCallback(
+    async (channel: Channel) => {
+      setTuningStatus(`Tuning ${channel.name} (${channel.redirectNumber})...`);
+      try {
+        await tuneChannel(channel.redirectNumber, channel.name);
+        setLastTuned(`${channel.name} [${channel.dummyNumber}]`);
+        setTuningStatus(null);
+      } catch (err) {
+        setTuningStatus(`Tune error: ${err instanceof Error ? err.message : String(err)}`);
+        setTimeout(() => setTuningStatus(null), 3000);
+      }
+    },
+    [],
+  );
+
+  // Clear direct dialing buffer
+  const clearDialer = useCallback(() => {
+    if (dialTimerRef.current !== null) {
+      window.clearTimeout(dialTimerRef.current);
+      dialTimerRef.current = null;
+    }
+    if (dialIntervalRef.current !== null) {
+      window.clearInterval(dialIntervalRef.current);
+      dialIntervalRef.current = null;
+    }
+    setDialBuffer("");
+    setDialProgress(100);
+  }, []);
+
+  // Point 5: Search order:
+  // 1. Search dummy numbers.
+  // 2. If not found in dummy, search redirect numbers (never looping back).
+  const executeDialSearch = useCallback(
+    (digits: string) => {
+      if (!digits) return;
+      const targetNum = parseInt(digits, 10);
+      if (isNaN(targetNum)) {
+        clearDialer();
         return;
       }
 
-      const key = KEY_BINDINGS[event.key];
+      // Collect all channels from all genres
+      const allChannels = genres.flatMap((g) =>
+        (g.channels || []).map((c) => ({ channel: c, genre: g })),
+      );
 
-      if (key) {
-        event.preventDefault();
-        press(key);
+      // Search 1: dummy number
+      let match = allChannels.find((item) => item.channel.dummyNumber === targetNum);
+
+      // Search 2: redirect number (only if not found in dummy)
+      if (!match) {
+        match = allChannels.find((item) => item.channel.redirectNumber === targetNum);
+      }
+
+      if (match) {
+        // Switch to this channel's genre & channel
+        const gIdx = genres.findIndex((g) => g.id === match.genre.id);
+        if (gIdx >= 0) {
+          setSelectedGenreIndex(gIdx);
+          const cIdx = (genres[gIdx].channels || []).findIndex(
+            (c) => c.id === match.channel.id,
+          );
+          if (cIdx >= 0) {
+            setSelectedChannelIndex(cIdx);
+            setHoveredChannelIndex(cIdx);
+          }
+        }
+        // Trigger main backend logic
+        void handleTune(match.channel);
+      } else {
+        setTuningStatus(`Channel ${targetNum} not found`);
+        setTimeout(() => setTuningStatus(null), 2500);
+      }
+
+      clearDialer();
+    },
+    [genres, handleTune, clearDialer],
+  );
+
+  // Direct number key buffering (Point 5)
+  const handleDigitPress = useCallback(
+    (digit: string) => {
+      const next = (dialBuffer + digit).slice(-3); // Maximum 3 digits
+      setDialBuffer(next);
+
+      // Reset timers
+      if (dialTimerRef.current !== null) window.clearTimeout(dialTimerRef.current);
+      if (dialIntervalRef.current !== null) window.clearInterval(dialIntervalRef.current);
+
+      const startTime = Date.now();
+      dialIntervalRef.current = window.setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const remainingPct = Math.max(0, 100 - (elapsed / DIAL_TIMEOUT_MS) * 100);
+        setDialProgress(remainingPct);
+      }, 50);
+
+      // Trigger after 3 seconds or immediately if 3 digits are reached
+      if (next.length === 3) {
+        executeDialSearch(next);
+      } else {
+        dialTimerRef.current = window.setTimeout(() => {
+          executeDialSearch(next);
+        }, DIAL_TIMEOUT_MS);
+      }
+    },
+    [dialBuffer, executeDialSearch],
+  );
+
+  // ----------------- REMOTE NAVIGATION (Points 1, 2, 3) -----------------
+
+  // Channel Down navigation
+  const handleChannelDown = useCallback(() => {
+    if (focusedColumn === "genre") {
+      // Cyclic genre navigation
+      if (genres.length === 0) return;
+      const next = (selectedGenreIndex + 1) % genres.length;
+      setSelectedGenreIndex(next);
+      setHoveredChannelIndex(0);
+      setSelectedChannelIndex(null);
+      return;
+    }
+
+    // Channels column navigation
+    if (currentChannels.length === 0) return;
+
+    if (selectedChannelIndex === null) {
+      // Point 1: First press of ChannelDown selects first channel (does not trigger play)
+      setSelectedChannelIndex(0);
+      setHoveredChannelIndex(0);
+    } else {
+      // Point 2: Cyclic selection: wrap from bottom to top
+      const next = (selectedChannelIndex + 1) % currentChannels.length;
+      setSelectedChannelIndex(next);
+      setHoveredChannelIndex(next);
+    }
+  }, [focusedColumn, genres.length, selectedGenreIndex, currentChannels.length, selectedChannelIndex]);
+
+  // Channel Up navigation
+  const handleChannelUp = useCallback(() => {
+    if (focusedColumn === "genre") {
+      // Cyclic genre navigation: wrap from top to bottom
+      if (genres.length === 0) return;
+      const prev = (selectedGenreIndex - 1 + genres.length) % genres.length;
+      setSelectedGenreIndex(prev);
+      setHoveredChannelIndex(0);
+      setSelectedChannelIndex(null);
+      return;
+    }
+
+    // Channels column navigation
+    if (currentChannels.length === 0) return;
+
+    if (selectedChannelIndex === null) {
+      // If hovering, select last channel cyclically
+      const last = currentChannels.length - 1;
+      setSelectedChannelIndex(last);
+      setHoveredChannelIndex(last);
+    } else {
+      // Point 2: Cyclic selection: wrap from top (0) to bottom
+      const prev = (selectedChannelIndex - 1 + currentChannels.length) % currentChannels.length;
+      setSelectedChannelIndex(prev);
+      setHoveredChannelIndex(prev);
+    }
+  }, [focusedColumn, genres.length, selectedGenreIndex, currentChannels.length, selectedChannelIndex]);
+
+  // OK button: triggers currently selected channel
+  const handleOkPress = useCallback(() => {
+    // If user was actively dialing digits, immediately execute search
+    if (dialBuffer.length > 0) {
+      executeDialSearch(dialBuffer);
+      return;
+    }
+
+    // Point 1: Triggers current selected channel regardless of mouse pointer!
+    if (currentChannels.length === 0) return;
+
+    const targetIdx = selectedChannelIndex ?? hoveredChannelIndex;
+    if (targetIdx >= 0 && targetIdx < currentChannels.length) {
+      // Ensure it is marked selected
+      setSelectedChannelIndex(targetIdx);
+      void handleTune(currentChannels[targetIdx]);
+    }
+  }, [dialBuffer, executeDialSearch, currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune]);
+
+  // Global Keydown Handler (Physical Remote & Keyboard)
+  useEffect(() => {
+    // Point 6: Suspend all remote keys while Edit UI is open
+    if (isEditOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ignore if focus is in an input field
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        return;
+      }
+
+      const now = Date.now();
+      const key = e.key;
+      const keyCode = e.keyCode;
+
+      // ChannelDown detection: key "ChannelDown", code "PageDown", keyCode 34, ArrowDown
+      const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34 || key === "ArrowDown";
+      // ChannelUp detection: key "ChannelUp", code "PageUp", keyCode 33, ArrowUp
+      const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33 || key === "ArrowUp";
+      // OK / Enter detection: key "Enter", "Select", keyCode 13
+      const isOk = key === "Enter" || key === "Select" || keyCode === 13;
+
+      // Point 3: Chording / Simultaneous Press Detection
+      if (isChDown) {
+        e.preventDefault();
+        lastChDownRef.current = now;
+
+        if (now - lastChUpRef.current <= CHORD_THRESHOLD_MS && !isChordHandledRef.current) {
+          // Both ChannelUp and ChannelDown pressed simultaneously!
+          isChordHandledRef.current = true;
+          setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
+          return;
+        }
+
+        isChordHandledRef.current = false;
+        handleChannelDown();
+        return;
+      }
+
+      if (isChUp) {
+        e.preventDefault();
+        lastChUpRef.current = now;
+
+        if (now - lastChDownRef.current <= CHORD_THRESHOLD_MS && !isChordHandledRef.current) {
+          // Both ChannelUp and ChannelDown pressed simultaneously!
+          isChordHandledRef.current = true;
+          setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
+          return;
+        }
+
+        isChordHandledRef.current = false;
+        handleChannelUp();
+        return;
+      }
+
+      if (isOk) {
+        e.preventDefault();
+        handleOkPress();
+        return;
+      }
+
+      // Left / Right keys as auxiliary navigation
+      if (key === "ArrowLeft") {
+        e.preventDefault();
+        setFocusedColumn("genre");
+        return;
+      }
+      if (key === "ArrowRight") {
+        e.preventDefault();
+        setFocusedColumn("channels");
+        return;
+      }
+
+      // Point 5: Direct Number Entry (0–9)
+      if (key >= "0" && key <= "9") {
+        e.preventDefault();
+        handleDigitPress(key);
+        return;
+      }
+
+      // Edit shortcut: 'e' or 'E'
+      if (key === "e" || key === "E") {
+        e.preventDefault();
+        setIsEditOpen(true);
+        return;
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
-
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [press]);
-
-  const run = useCallback((action: () => Promise<unknown>, done?: () => void) => {
-    void action()
-      .then(() => {
-        setActionError(null);
-        done?.();
-      })
-      .catch((cause: unknown) =>
-        setActionError(cause instanceof Error ? cause.message : String(cause)),
-      );
-  }, []);
-
-  const connected = state?.connected ?? false;
-
-  const keyProps: KeyProps = {
-    flash,
-    disabled: !connected,
-    onPress: press,
-    onStartHold: startHold,
-    onStopHold: stopHold,
-  };
-
-  const powerLabel = state?.isOn == null ? "—" : state.isOn ? "on" : "standby";
-
-  const volumeLabel = state?.volume
-    ? `${state.volume.level}/${state.volume.max}${state.volume.muted ? " muted" : ""}`
-    : "—";
-
-  const modelLabel = state?.device
-    ? `${state.device.manufacturer} ${state.device.model}`
-    : "—";
+  }, [isEditOpen, handleChannelDown, handleChannelUp, handleOkPress, handleDigitPress]);
 
   return (
-    <div className="app">
-      <header className="bar">
-        <span className="brand">StbLab</span>
-        <span className="bar-sub">Android TV Remote v2</span>
-        <span className="bar-link">
-          <span className="led" data-state={connected ? "on" : "off"} />
-          {connected ? "linked" : "offline"}
-        </span>
-      </header>
+    <div className="picker-container">
+      {/* 3/4th Viewport Width (75%) */}
+      <main className="picker-main">
+        {/* Genre Column (Parent) */}
+        <section className={`col genre-col ${focusedColumn === "genre" ? "focused" : ""}`}>
+          <h2 className="col-header">
+            <span>Genre</span>
+          </h2>
 
-      <aside className="rail">
-        <section className="block">
-          <h2 className="block-title">Telemetry</h2>
-          <dl className="rows">
-            <dt>Power</dt>
-            <dd>{powerLabel}</dd>
-            <dt>Volume</dt>
-            <dd>{volumeLabel}</dd>
-            <dt>App</dt>
-            <dd title={state?.currentApp ?? undefined}>{state?.currentApp ?? "—"}</dd>
-            <dt>Device</dt>
-            <dd title={modelLabel === "—" ? undefined : modelLabel}>{modelLabel}</dd>
-          </dl>
-        </section>
-
-        {state?.features.length ? (
-          <section className="block">
-            <h2 className="block-title">Negotiated features</h2>
-            <ul className="tags">
-              {state.features.map((feature) => (
-                <li key={feature}>{feature.toLowerCase()}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <section className="block">
-          <h2 className="block-title">Text input</h2>
-          <form
-            className="field-row"
-            onSubmit={(event) => {
-              event.preventDefault();
-              run(() => sendText(text), () => setText(""));
-            }}
-          >
-            <input
-              type="text"
-              placeholder="focused field"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-            <button type="submit" className="key key-inline" disabled={text === "" || !connected}>
-              Send
-            </button>
-          </form>
-          <p className="hint">Types into whatever has focus on the device.</p>
-        </section>
-
-        {actionError ?? linkError ? (
-          <div className="banner banner-error">
-            <span>{actionError ?? linkError}</span>
-            <button
-              type="button"
-              aria-label="Dismiss"
-              onClick={() => {
-                setActionError(null);
-                setLinkError(null);
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        ) : null}
-
-        {!connected && !linkError ? (
-          <div className="banner banner-warn">
-            <span>
-              No live session. The box may be off, asleep, or already held by another remote — the
-              API redials every few seconds.
-            </span>
-          </div>
-        ) : null}
-      </aside>
-
-      <main className="deck">
-        <section className="block span-7">
-          <h2 className="block-title">Navigate</h2>
-          <div className="nav-body">
-            <div className="dpad">
-              <span />
-              <RemoteKey label="▲" keyName="DPAD_UP" {...keyProps} />
-              <span />
-              <RemoteKey label="◀" keyName="DPAD_LEFT" {...keyProps} />
-              <RemoteKey label="OK" keyName="DPAD_CENTER" className="key-primary" {...keyProps} />
-              <RemoteKey label="▶" keyName="DPAD_RIGHT" {...keyProps} />
-              <span />
-              <RemoteKey label="▼" keyName="DPAD_DOWN" {...keyProps} />
-              <span />
-            </div>
-            <div className="grid cols-2">
-              <RemoteKey label="Back" keyName="BACK" {...keyProps} />
-              <RemoteKey label="Home" keyName="HOME" {...keyProps} />
-              <RemoteKey label="Search" keyName="SEARCH" {...keyProps} />
-              <RemoteKey label="Settings" keyName="SETTINGS" {...keyProps} />
-            </div>
-          </div>
-        </section>
-
-        <div className="stack span-5">
-          <section className="block">
-            <h2 className="block-title">Volume &amp; channel</h2>
-            <div className="grid cols-4">
-              <RemoteKey label="Vol +" keyName="VOLUME_UP" repeat {...keyProps} />
-              <RemoteKey label="Vol −" keyName="VOLUME_DOWN" repeat {...keyProps} />
-              <RemoteKey label="Ch +" keyName="CHANNEL_UP" repeat {...keyProps} />
-              <RemoteKey label="Ch −" keyName="CHANNEL_DOWN" repeat {...keyProps} />
-            </div>
-          </section>
-
-          <section className="block">
-            <h2 className="block-title">System</h2>
-            <div className="grid cols-4">
-              <RemoteKey label="Power" keyName="POWER" {...keyProps} />
-              <RemoteKey label="Mute" keyName="VOLUME_MUTE" {...keyProps} />
-              <RemoteKey label="Live TV" keyName="TV" {...keyProps} />
-              <RemoteKey label="Input" keyName="TV_INPUT" {...keyProps} />
-            </div>
-          </section>
-        </div>
-
-        <section className="block span-7">
-          <h2 className="block-title">Transport</h2>
-          <div className="grid cols-4">
-            <RemoteKey label="Prev" keyName="MEDIA_PREVIOUS" {...keyProps} />
-            <RemoteKey label="Rewind" keyName="MEDIA_REWIND" repeat {...keyProps} />
-            <RemoteKey label="Forward" keyName="MEDIA_FAST_FORWARD" repeat {...keyProps} />
-            <RemoteKey label="Next" keyName="MEDIA_NEXT" {...keyProps} />
-            <RemoteKey label="Play/Pause" keyName="MEDIA_PLAY_PAUSE" {...keyProps} />
-            <RemoteKey label="Stop" keyName="MEDIA_STOP" {...keyProps} />
-            <RemoteKey label="Info" keyName="INFO" {...keyProps} />
-            <RemoteKey label="Delete" keyName="DEL" {...keyProps} />
-          </div>
-        </section>
-
-        <section className="block span-5">
-          <h2 className="block-title">Launch</h2>
-          <div className="grid cols-3">
-            {COMMON_APPS.map((entry) => (
-              <button
-                key={entry.label}
-                type="button"
-                className="key"
-                disabled={!connected}
-                title={entry.kind === "key" ? `Key: ${entry.key}` : entry.uri}
-                onClick={() =>
-                  run(() =>
-                    entry.kind === "key" ? sendKey(entry.key) : launchApp(entry.uri),
-                  )
-                }
+          <div className="picker-list">
+            {genres.map((g, idx) => (
+              <div
+                key={g.id}
+                className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""}`}
+                onClick={() => {
+                  setSelectedGenreIndex(idx);
+                  setHoveredChannelIndex(0);
+                  setSelectedChannelIndex(null);
+                  setFocusedColumn("channels");
+                }}
               >
-                {entry.label}
-              </button>
+                <span>{g.name}</span>
+                <span className="count-badge">{g.channels?.length || 0}</span>
+              </div>
             ))}
           </div>
-          <form
-            className="field-row stacked"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const target = app.trim();
-              if (!target) return;
-              if (
-                target.toLowerCase() === "com.airtel.tv" ||
-                target.toLowerCase() === "xstream" ||
-                target.toLowerCase() === "tv" ||
-                target.toLowerCase() === "live"
-              ) {
-                run(() => sendKey("TV"), () => setApp(""));
-              } else {
-                run(() => launchApp(target), () => setApp(""));
-              }
-            }}
-          >
-            <input
-              type="text"
-              placeholder="deep link, package or app name"
-              value={app}
-              onChange={(event) => setApp(event.target.value)}
-            />
-            <button type="submit" className="key key-inline" disabled={app.trim() === "" || !connected}>
-              Open
-            </button>
-          </form>
         </section>
 
-        <section className="block span-12">
-          <h2 className="block-title">Shortcuts</h2>
-          <p className="hint">
-            <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>Enter</kbd> OK ·{" "}
-            <kbd>Backspace</kbd> back · <kbd>Space</kbd> play/pause · <kbd>M</kbd> mute ·{" "}
-            <kbd>P</kbd> power · <kbd>+</kbd> <kbd>−</kbd> volume · launching is fire-and-forget:
-            the device never acknowledges it, so watch the App row above.
-          </p>
+        {/* Channels Column (Children) */}
+        <section className={`col chan-col ${focusedColumn === "channels" ? "focused" : ""}`}>
+          <div className="col-header">
+            <span className="page-pill">
+              Page {currentChunkIndex + 1} of {totalChunks}
+            </span>
+            <span className="col-title">{currentGenre?.name || "Channels"}</span>
+            <span className="page-pill">{currentChannels.length} ch</span>
+          </div>
+
+          <div className="picker-list">
+            {visibleChannels.length > 0 ? (
+              visibleChannels.map((c, chunkIdx) => {
+                const absoluteIdx = currentChunkIndex * CHANNELS_PER_PAGE + chunkIdx;
+                const isSelected = selectedChannelIndex === absoluteIdx;
+                const isHovered = selectedChannelIndex === null && hoveredChannelIndex === absoluteIdx;
+
+                return (
+                  <div
+                    key={c.id}
+                    className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
+                    onClick={() => {
+                      setSelectedChannelIndex(absoluteIdx);
+                      setFocusedColumn("channels");
+                      void handleTune(c);
+                    }}
+                  >
+                    <span className="num-badge">{c.dummyNumber}</span>
+                    <span className="chan-name">{c.name}</span>
+                    <span className="redirect-hint">→ {c.redirectNumber}</span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="empty-notice">No channels found in this genre.</div>
+            )}
+          </div>
         </section>
       </main>
+
+      {/* 1/4th Viewport Width (25%) */}
+      <aside className="picker-sidebar">
+        <div className="sidebar-top">
+          <div className="sidebar-brand">
+            <h1>StbLab Picker</h1>
+            <span className="link-status">
+              <span className={`led ${stbState?.connected ? "online" : "offline"}`} />
+              {stbState?.connected ? "Live" : "Offline"}
+            </span>
+          </div>
+
+          {/* Telemetry Card */}
+          <div className="telemetry-card">
+            <dl className="telemetry-rows">
+              <dt>Power</dt>
+              <dd>{stbState?.isOn == null ? "—" : stbState.isOn ? "ON" : "STANDBY"}</dd>
+              <dt>Volume</dt>
+              <dd>
+                {stbState?.volume
+                  ? `${stbState.volume.level}/${stbState.volume.max}${stbState.volume.muted ? " (MUTE)" : ""}`
+                  : "—"}
+              </dd>
+              <dt>App</dt>
+              <dd title={stbState?.currentApp ?? undefined}>
+                {stbState?.currentApp ? stbState.currentApp.split(".").pop() : "TV Home"}
+              </dd>
+              <dt>Tuned</dt>
+              <dd style={{ color: "var(--focus)", fontWeight: 700 }}>
+                {lastTuned || "—"}
+              </dd>
+            </dl>
+          </div>
+
+          {/* Direct Dialing HUD (Point 5) */}
+          {dialBuffer && (
+            <div className="dialer-badge">
+              <div className="dialer-label">Direct Channel Dial</div>
+              <div className="dialer-digits">
+                {dialBuffer.padEnd(3, "_").split("").join(" ")}
+              </div>
+              <div className="dialer-progress">
+                <div
+                  className="dialer-bar"
+                  style={{ width: `${dialProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tuning status message */}
+          {tuningStatus && (
+            <div
+              style={{
+                background: "#242217",
+                border: "1px solid var(--focus)",
+                color: "var(--focus)",
+                padding: "8px 12px",
+                borderRadius: "4px",
+                fontSize: "13px",
+                fontFamily: "var(--mono)",
+              }}
+            >
+              {tuningStatus}
+            </div>
+          )}
+
+          {/* Navigation Hints */}
+          <div className="hints-card">
+            <div>
+              <b>CH ▼ / ▲</b>: Next / Prev channel
+            </div>
+            <div>
+              <b>CH ▲+▼ simultaneously</b>: Switch Genre / Channels
+            </div>
+            <div>
+              <b>OK (Enter)</b>: Tune selected
+            </div>
+            <div>
+              <b>0–9</b>: Dial number (within 3s)
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom-Right Corner Edit UI Button (Point 4) */}
+        <div className="sidebar-bottom">
+          <button
+            type="button"
+            className="edit-btn"
+            onClick={() => setIsEditOpen(true)}
+            aria-label="Edit Channels and Genres"
+          >
+            <span>⚙</span>
+            <span>EDIT CHANNELS</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Edit Modal (Point 6) */}
+      {isEditOpen && (
+        <EditModal
+          genres={genres}
+          selectedGenreId={currentGenre?.id || null}
+          onClose={() => setIsEditOpen(false)}
+          onRefresh={loadGenres}
+        />
+      )}
     </div>
   );
 }

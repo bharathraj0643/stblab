@@ -101,3 +101,102 @@ export function launchApp(app: string): Promise<unknown> {
     body: JSON.stringify({ app }),
   });
 }
+
+export type Channel = {
+  id: number;
+  genreId: number;
+  name: string;
+  dummyNumber: number;
+  redirectNumber: number;
+  sortOrder: number;
+};
+
+export type Genre = {
+  id: number;
+  name: string;
+  sortOrder: number;
+  channels: Channel[];
+};
+
+export function getGenres(): Promise<Genre[]> {
+  return request<Genre[]>("/genres");
+}
+
+export function createGenre(name: string, sortOrder = 0): Promise<Genre> {
+  return request<Genre>("/genres", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, sortOrder }),
+  });
+}
+
+export function updateGenre(id: number, name: string, sortOrder = 0): Promise<Genre> {
+  return request<Genre>(`/genres/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, sortOrder }),
+  });
+}
+
+export function deleteGenre(id: number): Promise<void> {
+  return request<void>(`/genres/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function createChannel(data: {
+  genreId: number;
+  name: string;
+  dummyNumber: number;
+  redirectNumber: number;
+  sortOrder?: number;
+}): Promise<Channel> {
+  return request<Channel>("/channels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateChannel(
+  id: number,
+  data: {
+    genreId: number;
+    name: string;
+    dummyNumber: number;
+    redirectNumber: number;
+    sortOrder: number;
+  },
+): Promise<Channel> {
+  return request<Channel>(`/channels/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteChannel(id: number): Promise<void> {
+  return request<void>(`/channels/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function reorderChannels(genreId: number, channelIds: number[]): Promise<void> {
+  return request<void>("/channels/reorder", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ genreId, channelIds }),
+  });
+}
+
+export function lookupChannel(number: number): Promise<Channel> {
+  return request<Channel>(`/channels/lookup?number=${number}`);
+}
+
+export function tuneChannel(redirectNumber: number, channelName?: string): Promise<{ redirectNumber: number; channelName?: string }> {
+  return request<{ redirectNumber: number; channelName?: string }>("/remote/tune", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ redirectNumber, channelName }),
+  });
+}

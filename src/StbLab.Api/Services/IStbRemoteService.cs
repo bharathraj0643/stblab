@@ -30,4 +30,7 @@ public interface IStbRemoteService
 
     /// <summary>Opens an app by package name or deep link.</summary>
     Task<LaunchAcknowledgment> LaunchAsync(LaunchRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Tunes a channel by bringing Live TV to the foreground and sending the redirect number.</summary>
+    Task<TuneAcknowledgment> TuneAsync(TuneRequest request, CancellationToken cancellationToken);
 }
