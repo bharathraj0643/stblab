@@ -13,13 +13,17 @@ import {
 const POLL_MS = 2000;
 const HOLD_MS = 180;
 
-const COMMON_APPS = [
-  { label: "Spotify", app: "com.spotify.tv.android" },
-  { label: "YouTube", app: "com.google.android.youtube.tv" },
-  { label: "Netflix", app: "com.netflix.ninja" },
-  { label: "Prime Video", app: "com.amazon.amazonvideo.livingroom" },
-  { label: "Hotstar", app: "in.startv.hotstar" },
-  { label: "Xstream", app: "com.airtel.tv" },
+type AppEntry =
+  | { label: string; kind: "link"; uri: string }
+  | { label: string; kind: "key"; key: string };
+
+const COMMON_APPS: AppEntry[] = [
+  { label: "YouTube", kind: "link", uri: "https://www.youtube.com/tv" },
+  { label: "Netflix", kind: "link", uri: "https://www.netflix.com/browse" },
+  { label: "Prime Video", kind: "link", uri: "https://app.primevideo.com/" },
+  { label: "Hotstar", kind: "link", uri: "https://www.hotstar.com" },
+  { label: "Xstream", kind: "key", key: "TV" },
+  { label: "Spotify", kind: "link", uri: "market://search?q=spotify" },
 ];
 
 /** Mirrors what a physical remote gives you for free. */
@@ -345,9 +349,10 @@ export default function RemotePage() {
 
           <section className="block">
             <h2 className="block-title">System</h2>
-            <div className="grid cols-3">
+            <div className="grid cols-4">
               <RemoteKey label="Power" keyName="POWER" {...keyProps} />
               <RemoteKey label="Mute" keyName="VOLUME_MUTE" {...keyProps} />
+              <RemoteKey label="Live TV" keyName="TV" {...keyProps} />
               <RemoteKey label="Input" keyName="TV_INPUT" {...keyProps} />
             </div>
           </section>
@@ -372,12 +377,16 @@ export default function RemotePage() {
           <div className="grid cols-3">
             {COMMON_APPS.map((entry) => (
               <button
-                key={entry.app}
+                key={entry.label}
                 type="button"
                 className="key"
                 disabled={!connected}
-                title={entry.app}
-                onClick={() => run(() => launchApp(entry.app))}
+                title={entry.kind === "key" ? `Key: ${entry.key}` : entry.uri}
+                onClick={() =>
+                  run(() =>
+                    entry.kind === "key" ? sendKey(entry.key) : launchApp(entry.uri),
+                  )
+                }
               >
                 {entry.label}
               </button>
@@ -387,12 +396,23 @@ export default function RemotePage() {
             className="field-row stacked"
             onSubmit={(event) => {
               event.preventDefault();
-              run(() => launchApp(app.trim()), () => setApp(""));
+              const target = app.trim();
+              if (!target) return;
+              if (
+                target.toLowerCase() === "com.airtel.tv" ||
+                target.toLowerCase() === "xstream" ||
+                target.toLowerCase() === "tv" ||
+                target.toLowerCase() === "live"
+              ) {
+                run(() => sendKey("TV"), () => setApp(""));
+              } else {
+                run(() => launchApp(target), () => setApp(""));
+              }
             }}
           >
             <input
               type="text"
-              placeholder="package or deep link"
+              placeholder="deep link, package or app name"
               value={app}
               onChange={(event) => setApp(event.target.value)}
             />

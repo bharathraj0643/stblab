@@ -266,9 +266,18 @@ public sealed class RemoteClient : IAsyncDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appLink);
 
+        string trimmed = appLink.Trim();
+
+        if (AppLinks.IsTvTuner(trimmed))
+        {
+            return SendKeyAsync(RemoteKeyCode.KeycodeTv);
+        }
+
+        string resolved = AppLinks.Resolve(trimmed);
+
         return SendAsync(new RemoteMessage
         {
-            RemoteAppLinkLaunchRequest = new RemoteAppLinkLaunchRequest { AppLink = appLink },
+            RemoteAppLinkLaunchRequest = new RemoteAppLinkLaunchRequest { AppLink = resolved },
         });
     }
 

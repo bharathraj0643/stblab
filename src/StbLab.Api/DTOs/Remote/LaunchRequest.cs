@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace StbLab.Api.DTOs.Remote;
 
 /// <summary>Request body for <c>POST /api/v1/remote/launch</c>.</summary>
-/// <remarks>Accepts a package name or a deep link; the device resolves both.</remarks>
+/// <remarks>Accepts a deep link, package name, or TV tuner alias (e.g. xstream, com.airtel.tv).</remarks>
 public sealed class LaunchRequest
 {
     [Required(AllowEmptyStrings = false, ErrorMessage = "An app package or link is required.")]
