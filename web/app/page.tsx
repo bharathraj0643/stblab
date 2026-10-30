@@ -40,6 +40,14 @@ export default function ChannelPickerPage() {
   const [tuningStatus, setTuningStatus] = useState<string | null>(null);
   const [lastTuned, setLastTuned] = useState<string | null>(null);
 
+  // Auto-tune on dwell (5 seconds after moving and settling on a channel)
+  const autoTuneTimerRef = useRef<number | null>(null);
+  const autoTuneCountdownRef = useRef<number | null>(null);
+  const activeTimeHashRef = useRef<string | null>(null);
+  const lastTriggeredChannelIdRef = useRef<number | null>(null);
+  const executedTimeHashesRef = useRef<Set<string>>(new Set());
+  const [autoTuneRemaining, setAutoTuneRemaining] = useState<number | null>(null);
+
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
 
@@ -107,6 +115,7 @@ export default function ChannelPickerPage() {
   // Point 7: Main Backend Tuning Logic
   const handleTune = useCallback(
     async (channel: Channel) => {
+      lastTriggeredChannelIdRef.current = channel.id;
       setTuningStatus(`Tuning ${channel.name} (${channel.redirectNumber})...`);
       try {
         await tuneChannel(channel.redirectNumber, channel.name);
@@ -119,6 +128,92 @@ export default function ChannelPickerPage() {
     },
     [],
   );
+
+  // Cancels any active auto-tune timer and invalidates the active timehash
+  const cancelAutoTune = useCallback(() => {
+    if (autoTuneTimerRef.current !== null) {
+      window.clearTimeout(autoTuneTimerRef.current);
+      autoTuneTimerRef.current = null;
+    }
+    if (autoTuneCountdownRef.current !== null) {
+      window.clearInterval(autoTuneCountdownRef.current);
+      autoTuneCountdownRef.current = null;
+    }
+    activeTimeHashRef.current = null;
+    setAutoTuneRemaining(null);
+  }, []);
+
+  // Schedules auto-tune after 5 seconds of settling on a newly moved channel
+  const scheduleAutoTune = useCallback(
+    (channel: Channel) => {
+      // 1. Cancel previous pending timer
+      cancelAutoTune();
+
+      // 2. Only trigger if the channel is different from the immediate past triggered channel
+      if (lastTriggeredChannelIdRef.current === channel.id) {
+        return;
+      }
+
+      // 3. Unique moment timehash
+      const momentTimestamp = Date.now();
+      const timeHash = `th_${momentTimestamp}_ch${channel.id}_${Math.random().toString(36).slice(2, 9)}`;
+      activeTimeHashRef.current = timeHash;
+
+      // 4. Start visual countdown
+      const totalSeconds = 5;
+      setAutoTuneRemaining(totalSeconds);
+
+      autoTuneCountdownRef.current = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - momentTimestamp) / 1000);
+        const remaining = Math.max(0, totalSeconds - elapsed);
+        setAutoTuneRemaining(remaining);
+        if (remaining <= 0 && autoTuneCountdownRef.current !== null) {
+          window.clearInterval(autoTuneCountdownRef.current);
+          autoTuneCountdownRef.current = null;
+        }
+      }, 250);
+
+      // 5. 5-second timer
+      autoTuneTimerRef.current = window.setTimeout(() => {
+        // Guard 1: Verify the timehash is still active (user didn't move away)
+        if (activeTimeHashRef.current !== timeHash) {
+          return;
+        }
+
+        // Guard 2: Verify this timehash hasn't already executed
+        if (executedTimeHashesRef.current.has(timeHash)) {
+          return;
+        }
+
+        // Guard 3: Stale state / refresh check: must fire within 6.5s of creation
+        if (Date.now() - momentTimestamp > 6500) {
+          cancelAutoTune();
+          return;
+        }
+
+        // Guard 4: Must not re-trigger the already triggered channel
+        if (lastTriggeredChannelIdRef.current === channel.id) {
+          cancelAutoTune();
+          return;
+        }
+
+        executedTimeHashesRef.current.add(timeHash);
+        lastTriggeredChannelIdRef.current = channel.id;
+        cancelAutoTune();
+
+        // Auto-trigger OK on that channel!
+        void handleTune(channel);
+      }, 5000);
+    },
+    [cancelAutoTune, handleTune],
+  );
+
+  // Clean up any timers on unmount (refresh immunity)
+  useEffect(() => {
+    return () => {
+      cancelAutoTune();
+    };
+  }, [cancelAutoTune]);
 
   // Clear direct dialing buffer
   const clearDialer = useCallback(() => {
@@ -160,6 +255,7 @@ export default function ChannelPickerPage() {
       }
 
       if (match) {
+        cancelAutoTune();
         // Switch to this channel's genre & channel
         const gIdx = genres.findIndex((g) => g.id === match.genre.id);
         if (gIdx >= 0) {
@@ -181,12 +277,13 @@ export default function ChannelPickerPage() {
 
       clearDialer();
     },
-    [genres, handleTune, clearDialer],
+    [genres, handleTune, clearDialer, cancelAutoTune],
   );
 
   // Direct number key buffering (Point 5)
   const handleDigitPress = useCallback(
     (digit: string) => {
+      cancelAutoTune();
       const next = (dialBuffer + digit).slice(-3); // Maximum 3 digits
       setDialBuffer(next);
 
@@ -210,13 +307,15 @@ export default function ChannelPickerPage() {
         }, DIAL_TIMEOUT_MS);
       }
     },
-    [dialBuffer, executeDialSearch],
+    [cancelAutoTune, dialBuffer, executeDialSearch],
   );
 
   // ----------------- REMOTE NAVIGATION (Points 1, 2, 3) -----------------
 
   // Channel Down navigation
   const handleChannelDown = useCallback(() => {
+    cancelAutoTune();
+
     if (focusedColumn === "genre") {
       // Cyclic genre navigation
       if (genres.length === 0) return;
@@ -234,16 +333,28 @@ export default function ChannelPickerPage() {
       // Point 1: First press of ChannelDown selects first channel (does not trigger play)
       setSelectedChannelIndex(0);
       setHoveredChannelIndex(0);
+      scheduleAutoTune(currentChannels[0]);
     } else {
       // Point 2: Cyclic selection: wrap from bottom to top
       const next = (selectedChannelIndex + 1) % currentChannels.length;
       setSelectedChannelIndex(next);
       setHoveredChannelIndex(next);
+      scheduleAutoTune(currentChannels[next]);
     }
-  }, [focusedColumn, genres.length, selectedGenreIndex, currentChannels.length, selectedChannelIndex]);
+  }, [
+    cancelAutoTune,
+    focusedColumn,
+    genres.length,
+    selectedGenreIndex,
+    currentChannels,
+    selectedChannelIndex,
+    scheduleAutoTune,
+  ]);
 
   // Channel Up navigation
   const handleChannelUp = useCallback(() => {
+    cancelAutoTune();
+
     if (focusedColumn === "genre") {
       // Cyclic genre navigation: wrap from top to bottom
       if (genres.length === 0) return;
@@ -262,16 +373,28 @@ export default function ChannelPickerPage() {
       const last = currentChannels.length - 1;
       setSelectedChannelIndex(last);
       setHoveredChannelIndex(last);
+      scheduleAutoTune(currentChannels[last]);
     } else {
       // Point 2: Cyclic selection: wrap from top (0) to bottom
       const prev = (selectedChannelIndex - 1 + currentChannels.length) % currentChannels.length;
       setSelectedChannelIndex(prev);
       setHoveredChannelIndex(prev);
+      scheduleAutoTune(currentChannels[prev]);
     }
-  }, [focusedColumn, genres.length, selectedGenreIndex, currentChannels.length, selectedChannelIndex]);
+  }, [
+    cancelAutoTune,
+    focusedColumn,
+    genres.length,
+    selectedGenreIndex,
+    currentChannels,
+    selectedChannelIndex,
+    scheduleAutoTune,
+  ]);
 
   // OK button: triggers currently selected channel
   const handleOkPress = useCallback(() => {
+    cancelAutoTune();
+
     // If user was actively dialing digits, immediately execute search
     if (dialBuffer.length > 0) {
       executeDialSearch(dialBuffer);
@@ -287,7 +410,15 @@ export default function ChannelPickerPage() {
       setSelectedChannelIndex(targetIdx);
       void handleTune(currentChannels[targetIdx]);
     }
-  }, [dialBuffer, executeDialSearch, currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune]);
+  }, [
+    cancelAutoTune,
+    dialBuffer,
+    executeDialSearch,
+    currentChannels,
+    selectedChannelIndex,
+    hoveredChannelIndex,
+    handleTune,
+  ]);
 
   // Global Keydown Handler (Physical Remote & Keyboard)
   useEffect(() => {
@@ -320,6 +451,7 @@ export default function ChannelPickerPage() {
         if (now - lastChUpRef.current <= CHORD_THRESHOLD_MS && !isChordHandledRef.current) {
           // Both ChannelUp and ChannelDown pressed simultaneously!
           isChordHandledRef.current = true;
+          cancelAutoTune();
           setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
           return;
         }
@@ -336,6 +468,7 @@ export default function ChannelPickerPage() {
         if (now - lastChDownRef.current <= CHORD_THRESHOLD_MS && !isChordHandledRef.current) {
           // Both ChannelUp and ChannelDown pressed simultaneously!
           isChordHandledRef.current = true;
+          cancelAutoTune();
           setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
           return;
         }
@@ -354,6 +487,7 @@ export default function ChannelPickerPage() {
       // Left / Right keys as auxiliary navigation
       if (key === "ArrowLeft") {
         e.preventDefault();
+        cancelAutoTune();
         setFocusedColumn("genre");
         return;
       }
@@ -373,6 +507,7 @@ export default function ChannelPickerPage() {
       // Edit shortcut: 'e' or 'E'
       if (key === "e" || key === "E") {
         e.preventDefault();
+        cancelAutoTune();
         setIsEditOpen(true);
         return;
       }
@@ -380,7 +515,14 @@ export default function ChannelPickerPage() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isEditOpen, handleChannelDown, handleChannelUp, handleOkPress, handleDigitPress]);
+  }, [
+    isEditOpen,
+    cancelAutoTune,
+    handleChannelDown,
+    handleChannelUp,
+    handleOkPress,
+    handleDigitPress,
+  ]);
 
   return (
     <div className="picker-container">
@@ -398,6 +540,7 @@ export default function ChannelPickerPage() {
                 key={g.id}
                 className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""}`}
                 onClick={() => {
+                  cancelAutoTune();
                   setSelectedGenreIndex(idx);
                   setHoveredChannelIndex(0);
                   setSelectedChannelIndex(null);
@@ -433,6 +576,7 @@ export default function ChannelPickerPage() {
                     key={c.id}
                     className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
                     onClick={() => {
+                      cancelAutoTune();
                       setSelectedChannelIndex(absoluteIdx);
                       setFocusedColumn("channels");
                       void handleTune(c);
@@ -500,6 +644,15 @@ export default function ChannelPickerPage() {
             </div>
           )}
 
+          {/* Auto-tune dwell countdown indicator */}
+          {autoTuneRemaining !== null && autoTuneRemaining > 0 && !dialBuffer && (
+            <div className="autotune-badge">
+              <div className="autotune-label">Auto-tuning in</div>
+              <div className="autotune-count">{autoTuneRemaining}s</div>
+              <div className="autotune-hint">Press OK to tune now or move to cancel</div>
+            </div>
+          )}
+
           {/* Tuning status message */}
           {tuningStatus && (
             <div
@@ -539,7 +692,10 @@ export default function ChannelPickerPage() {
           <button
             type="button"
             className="edit-btn"
-            onClick={() => setIsEditOpen(true)}
+            onClick={() => {
+              cancelAutoTune();
+              setIsEditOpen(true);
+            }}
             aria-label="Edit Channels and Genres"
           >
             <span>⚙</span>

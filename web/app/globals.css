@@ -352,6 +352,51 @@ html, body {
   transition: width 0.1s linear;
 }
 
+/* Auto-Tune Badge */
+.autotune-badge {
+  background: #16241c;
+  border: 2px solid var(--link);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  animation: pulse-autotune 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-autotune {
+  0%, 100% {
+    border-color: var(--link);
+    box-shadow: 0 0 0 rgba(74, 194, 107, 0);
+  }
+  50% {
+    border-color: #7ce698;
+    box-shadow: 0 0 14px rgba(74, 194, 107, 0.45);
+  }
+}
+
+.autotune-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--link);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+.autotune-count {
+  font-size: 32px;
+  font-family: var(--mono);
+  font-weight: 700;
+  color: #a4f5ba;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.autotune-hint {
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
 /* Instructions card */
 .hints-card {
   background: rgba(255, 255, 255, 0.02);
