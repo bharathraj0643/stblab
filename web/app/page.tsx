@@ -12,7 +12,6 @@ import {
 import EditModal from "./components/EditModal";
 
 const CHANNELS_PER_PAGE = 7;
-const CHORD_THRESHOLD_MS = 250;
 const DIAL_TIMEOUT_MS = 3000;
 const STATE_POLL_MS = 3000;
 
@@ -50,11 +49,6 @@ export default function ChannelPickerPage() {
 
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
-
-  // Chording detection refs (Point 3)
-  const lastChUpRef = useRef<number>(0);
-  const lastChDownRef = useRef<number>(0);
-  const isChordHandledRef = useRef<boolean>(false);
 
   // Fetch genres from SQLite backend
   const loadGenres = useCallback(async () => {
@@ -443,37 +437,14 @@ export default function ChannelPickerPage() {
       // OK / Enter detection: key "Enter", "Select", keyCode 13
       const isOk = key === "Enter" || key === "Select" || keyCode === 13;
 
-      // Point 3: Chording / Simultaneous Press Detection
       if (isChDown) {
         e.preventDefault();
-        lastChDownRef.current = now;
-
-        if (now - lastChUpRef.current <= CHORD_THRESHOLD_MS && !isChordHandledRef.current) {
-          // Both ChannelUp and ChannelDown pressed simultaneously!
-          isChordHandledRef.current = true;
-          cancelAutoTune();
-          setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
-          return;
-        }
-
-        isChordHandledRef.current = false;
         handleChannelDown();
         return;
       }
 
       if (isChUp) {
         e.preventDefault();
-        lastChUpRef.current = now;
-
-        if (now - lastChDownRef.current <= CHORD_THRESHOLD_MS && !isChordHandledRef.current) {
-          // Both ChannelUp and ChannelDown pressed simultaneously!
-          isChordHandledRef.current = true;
-          cancelAutoTune();
-          setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
-          return;
-        }
-
-        isChordHandledRef.current = false;
         handleChannelUp();
         return;
       }
@@ -497,10 +468,47 @@ export default function ChannelPickerPage() {
         return;
       }
 
-      // Point 5: Direct Number Entry (0–9)
-      if (key >= "0" && key <= "9") {
+      // Point 3 (Updated): Switch Genre / Channels Column Focus with 0, 00, or 000
+      const isZeroKey =
+        key === "0" ||
+        key === "00" ||
+        key === "000" ||
+        e.code === "Digit0" ||
+        e.code === "Numpad0" ||
+        keyCode === 48 ||
+        keyCode === 96;
+
+      if (isZeroKey) {
+        // If the user has started dialing digits 1-9 (e.g. "1", "10", "204"),
+        // '0' is part of the channel number being dialed.
+        if (dialBuffer.length > 0 && /[1-9]/.test(dialBuffer)) {
+          e.preventDefault();
+          handleDigitPress("0");
+          return;
+        }
+
+        // Otherwise (when dialBuffer is empty or only zeroes), pressing 0 / 00 / 000
+        // switches column focus vice-versa (genre <-> channels)
         e.preventDefault();
-        handleDigitPress(key);
+        cancelAutoTune();
+        clearDialer();
+        setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
+        return;
+      }
+
+      // Point 5: Direct Number Entry (1–9)
+      const isNonZeroDigit =
+        (key >= "1" && key <= "9") ||
+        (keyCode >= 49 && keyCode <= 57) ||
+        (keyCode >= 97 && keyCode <= 105);
+
+      if (isNonZeroDigit) {
+        e.preventDefault();
+        const digit =
+          key >= "1" && key <= "9"
+            ? key
+            : String(keyCode >= 97 ? keyCode - 96 : keyCode - 48);
+        handleDigitPress(digit);
         return;
       }
 
@@ -518,6 +526,8 @@ export default function ChannelPickerPage() {
   }, [
     isEditOpen,
     cancelAutoTune,
+    clearDialer,
+    dialBuffer,
     handleChannelDown,
     handleChannelUp,
     handleOkPress,
@@ -676,13 +686,13 @@ export default function ChannelPickerPage() {
               <b>CH ▼ / ▲</b>: Next / Prev channel
             </div>
             <div>
-              <b>CH ▲+▼ simultaneously</b>: Switch Genre / Channels
+              <b>0 / 00 / 000</b>: Switch Genre / Channels
             </div>
             <div>
               <b>OK (Enter)</b>: Tune selected
             </div>
             <div>
-              <b>0–9</b>: Dial number (within 3s)
+              <b>1–9</b>: Dial number (within 3s)
             </div>
           </div>
         </div>
