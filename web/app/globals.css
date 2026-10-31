@@ -121,6 +121,44 @@ html, body {
   color: var(--dim);
 }
 
+.page-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-nav-btn {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--dim);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.page-nav-btn:hover:not(:disabled) {
+  background: var(--focus);
+  color: #1a1a00;
+  border-color: var(--focus);
+  transform: scale(1.08);
+}
+
+.page-nav-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* ================== LISTS & ITEMS ================== */
 
 .picker-list {
@@ -245,7 +283,19 @@ html, body {
 .sidebar-top {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  overflow-y: auto;
+  max-height: calc(100vh - 90px);
+  padding-right: 2px;
+}
+
+.sidebar-top::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-top::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
 }
 
 .sidebar-brand {
@@ -256,13 +306,242 @@ html, body {
   padding-bottom: 12px;
 }
 
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .sidebar-brand h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-family: var(--mono);
   letter-spacing: 0.1em;
   color: var(--text);
   text-transform: uppercase;
+}
+
+.keypad-toggle-btn {
+  background: #252838;
+  border: 1px solid #3d425c;
+  color: var(--dim);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.keypad-toggle-btn:hover {
+  background: #31354a;
+  color: #fff;
+  border-color: var(--focus);
+}
+
+.keypad-toggle-btn.active {
+  background: var(--focus);
+  color: #1a1a00;
+  border-color: var(--focus);
+}
+
+/* ================== VIRTUAL REMOTE KEYPAD ================== */
+
+.virtual-keypad {
+  background: #181a24;
+  border: 1px solid #2e3247;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: keypadSlide 0.18s ease-out;
+}
+
+@keyframes keypadSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.keypad-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-family: var(--mono);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.keypad-status-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keypad-focus-indicator {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.keypad-focus-indicator.genre {
+  background: rgba(255, 154, 31, 0.2);
+  color: var(--accent);
+}
+
+.keypad-focus-indicator.channels {
+  background: rgba(247, 220, 28, 0.2);
+  color: var(--focus);
+}
+
+.state-badge {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.state-badge.selected {
+  background: rgba(74, 194, 107, 0.2);
+  color: var(--link);
+  font-weight: 700;
+}
+
+.state-badge.hovered {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+}
+
+.state-badge.genre {
+  color: var(--dim);
+}
+
+.keypad-status-right {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+}
+
+.keypad-autotune-pill {
+  background: #192720;
+  border: 1px solid var(--link);
+  color: #7ce698;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  animation: pulse-autotune 1.5s infinite ease-in-out;
+}
+
+.keypad-dial-pill {
+  background: #242217;
+  border: 1px solid var(--focus);
+  color: var(--focus);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.keypad-target-name {
+  color: var(--dim);
+  font-size: 10px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.keypad-btn {
+  background: #222533;
+  border: 1px solid #35394e;
+  color: var(--text);
+  border-radius: 5px;
+  padding: 8px 0;
+  font-size: 15px;
+  font-family: var(--mono);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s ease;
+  user-select: none;
+}
+
+.keypad-btn:hover {
+  background: #2d3144;
+  border-color: #4f5573;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.keypad-btn:active {
+  background: var(--focus);
+  color: #1a1a00;
+  border-color: var(--focus);
+  transform: translateY(1px);
+}
+
+.keypad-btn-sub {
+  font-size: 8px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 1px;
+  text-transform: uppercase;
+}
+
+.keypad-btn.nav-ch {
+  background: #1b2133;
+  border-color: #313d5e;
+  color: #8bb3ff;
+}
+
+.keypad-btn.nav-ch:hover {
+  background: #242d47;
+  border-color: #4a5c8c;
+  color: #fff;
+}
+
+.keypad-btn.nav-ok {
+  grid-column: span 3;
+  background: var(--focus);
+  color: #1a1a00;
+  border-color: var(--focus);
+  font-size: 14px;
+  font-weight: 800;
+  padding: 9px 0;
+}
+
+.keypad-btn.nav-ok:hover {
+  background: #ffe338;
+  box-shadow: 0 0 10px rgba(247, 220, 28, 0.4);
+}
+
+.keypad-btn.nav-ok:active {
+  background: #d4bc11;
 }
 
 .link-status {

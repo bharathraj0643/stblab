@@ -10,6 +10,7 @@ import {
   tuneChannel,
 } from "@/lib/api";
 import EditModal from "./components/EditModal";
+import VirtualKeypad from "./components/VirtualKeypad";
 
 const CHANNELS_PER_PAGE = 7;
 const DIAL_TIMEOUT_MS = 3000;
@@ -49,6 +50,9 @@ export default function ChannelPickerPage() {
 
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+
+  // Virtual Remote Keypad toggle state (collapsed by default)
+  const [isKeypadOpen, setIsKeypadOpen] = useState<boolean>(false);
 
   // Fetch genres from SQLite backend
   const loadGenres = useCallback(async () => {
@@ -304,6 +308,17 @@ export default function ChannelPickerPage() {
     [cancelAutoTune, dialBuffer, executeDialSearch],
   );
 
+  // Switch Focus with '0' (or append '0' when dialing)
+  const handleZeroPress = useCallback(() => {
+    if (dialBuffer.length > 0 && /[1-9]/.test(dialBuffer)) {
+      handleDigitPress("0");
+    } else {
+      cancelAutoTune();
+      clearDialer();
+      setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
+    }
+  }, [dialBuffer, handleDigitPress, cancelAutoTune, clearDialer]);
+
   // ----------------- REMOTE NAVIGATION (Points 1, 2, 3) -----------------
 
   // Channel Down navigation
@@ -381,6 +396,54 @@ export default function ChannelPickerPage() {
     genres.length,
     selectedGenreIndex,
     currentChannels,
+    selectedChannelIndex,
+    scheduleAutoTune,
+  ]);
+
+  // Page Left (Previous Page)
+  const handlePrevPage = useCallback(() => {
+    if (totalChunks <= 1 || currentChannels.length === 0) return;
+    cancelAutoTune();
+    const prevChunk = (currentChunkIndex - 1 + totalChunks) % totalChunks;
+    const targetIdx = Math.min(prevChunk * CHANNELS_PER_PAGE, currentChannels.length - 1);
+
+    setFocusedColumn("channels");
+    if (selectedChannelIndex !== null) {
+      setSelectedChannelIndex(targetIdx);
+      setHoveredChannelIndex(targetIdx);
+      scheduleAutoTune(currentChannels[targetIdx]);
+    } else {
+      setHoveredChannelIndex(targetIdx);
+    }
+  }, [
+    totalChunks,
+    currentChannels,
+    currentChunkIndex,
+    cancelAutoTune,
+    selectedChannelIndex,
+    scheduleAutoTune,
+  ]);
+
+  // Page Right (Next Page)
+  const handleNextPage = useCallback(() => {
+    if (totalChunks <= 1 || currentChannels.length === 0) return;
+    cancelAutoTune();
+    const nextChunk = (currentChunkIndex + 1) % totalChunks;
+    const targetIdx = Math.min(nextChunk * CHANNELS_PER_PAGE, currentChannels.length - 1);
+
+    setFocusedColumn("channels");
+    if (selectedChannelIndex !== null) {
+      setSelectedChannelIndex(targetIdx);
+      setHoveredChannelIndex(targetIdx);
+      scheduleAutoTune(currentChannels[targetIdx]);
+    } else {
+      setHoveredChannelIndex(targetIdx);
+    }
+  }, [
+    totalChunks,
+    currentChannels,
+    currentChunkIndex,
+    cancelAutoTune,
     selectedChannelIndex,
     scheduleAutoTune,
   ]);
@@ -479,20 +542,8 @@ export default function ChannelPickerPage() {
         keyCode === 96;
 
       if (isZeroKey) {
-        // If the user has started dialing digits 1-9 (e.g. "1", "10", "204"),
-        // '0' is part of the channel number being dialed.
-        if (dialBuffer.length > 0 && /[1-9]/.test(dialBuffer)) {
-          e.preventDefault();
-          handleDigitPress("0");
-          return;
-        }
-
-        // Otherwise (when dialBuffer is empty or only zeroes), pressing 0 / 00 / 000
-        // switches column focus vice-versa (genre <-> channels)
         e.preventDefault();
-        cancelAutoTune();
-        clearDialer();
-        setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
+        handleZeroPress();
         return;
       }
 
@@ -526,11 +577,10 @@ export default function ChannelPickerPage() {
   }, [
     isEditOpen,
     cancelAutoTune,
-    clearDialer,
-    dialBuffer,
     handleChannelDown,
     handleChannelUp,
     handleOkPress,
+    handleZeroPress,
     handleDigitPress,
   ]);
 
@@ -567,9 +617,31 @@ export default function ChannelPickerPage() {
         {/* Channels Column (Children) */}
         <section className={`col chan-col ${focusedColumn === "channels" ? "focused" : ""}`}>
           <div className="col-header">
-            <span className="page-pill">
-              Page {currentChunkIndex + 1} of {totalChunks}
-            </span>
+            <div className="page-nav">
+              <button
+                type="button"
+                className="page-nav-btn"
+                onClick={handlePrevPage}
+                disabled={totalChunks <= 1}
+                aria-label="Previous Page"
+                title="Previous Page"
+              >
+                ◀
+              </button>
+              <span className="page-pill">
+                Page {currentChunkIndex + 1} of {totalChunks}
+              </span>
+              <button
+                type="button"
+                className="page-nav-btn"
+                onClick={handleNextPage}
+                disabled={totalChunks <= 1}
+                aria-label="Next Page"
+                title="Next Page"
+              >
+                ▶
+              </button>
+            </div>
             <span className="col-title">{currentGenre?.name || "Channels"}</span>
             <span className="page-pill">{currentChannels.length} ch</span>
           </div>
@@ -609,12 +681,42 @@ export default function ChannelPickerPage() {
       <aside className="picker-sidebar">
         <div className="sidebar-top">
           <div className="sidebar-brand">
-            <h1>StbLab Picker</h1>
+            <div className="sidebar-title-row">
+              <h1>StbLab Picker</h1>
+              <button
+                type="button"
+                className={`keypad-toggle-btn ${isKeypadOpen ? "active" : ""}`}
+                onClick={() => setIsKeypadOpen((prev) => !prev)}
+                aria-expanded={isKeypadOpen}
+                title={isKeypadOpen ? "Hide Virtual Number Pad" : "Show Virtual Number Pad"}
+              >
+                <span>🔢</span>
+                <span>{isKeypadOpen ? "Hide Pad" : "NumPad"}</span>
+              </button>
+            </div>
             <span className="link-status">
               <span className={`led ${stbState?.connected ? "online" : "offline"}`} />
               {stbState?.connected ? "Live" : "Offline"}
             </span>
           </div>
+
+          {/* Virtual Remote Keypad (aware of picker state) */}
+          <VirtualKeypad
+            isOpen={isKeypadOpen}
+            onToggle={() => setIsKeypadOpen((prev) => !prev)}
+            focusedColumn={focusedColumn}
+            selectedChannelIndex={selectedChannelIndex}
+            hoveredChannelIndex={hoveredChannelIndex}
+            currentGenreName={currentGenre?.name || "Genre"}
+            activeChannel={currentChannels[activeChannelIdx] ?? null}
+            autoTuneRemaining={autoTuneRemaining}
+            dialBuffer={dialBuffer}
+            onDigitPress={handleDigitPress}
+            onZeroPress={handleZeroPress}
+            onChannelDown={handleChannelDown}
+            onChannelUp={handleChannelUp}
+            onOkPress={handleOkPress}
+          />
 
           {/* Telemetry Card */}
           <div className="telemetry-card">
