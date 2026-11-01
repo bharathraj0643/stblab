@@ -7,6 +7,8 @@ public sealed record Channel(
     int DummyNumber,
     int RedirectNumber,
     int SortOrder,
+    bool IsFavorite,
+    int FavoriteOrder,
     DateTime CreatedAt,
     DateTime UpdatedAt);
 

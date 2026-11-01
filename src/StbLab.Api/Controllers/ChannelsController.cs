@@ -61,7 +61,33 @@ public sealed class ChannelsController(ChannelRepository repo) : ControllerBase
         return Ok(MapChannel(channel));
     }
 
+    [HttpPost("{id:int}/favorite")]
+    [ProducesResponseType(typeof(ChannelDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ChannelDto>> ToggleFavorite(int id, CancellationToken ct)
+    {
+        var channel = await repo.ToggleFavoriteAsync(id, ct);
+        if (channel is null) return NotFound();
+        return Ok(MapChannel(channel));
+    }
+
+    [HttpGet("favorites")]
+    [ProducesResponseType(typeof(IReadOnlyList<ChannelDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<ChannelDto>>> GetFavorites(CancellationToken ct)
+    {
+        var channels = await repo.GetFavoritesAsync(ct);
+        return Ok(channels.Select(MapChannel).ToList());
+    }
+
+    [HttpPut("favorites/reorder")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ReorderFavorites(ReorderFavoritesRequest request, CancellationToken ct)
+    {
+        await repo.ReorderFavoritesAsync(request.ChannelIds, ct);
+        return NoContent();
+    }
+
     private static ChannelDto MapChannel(Channel c) =>
-        new(c.Id, c.GenreId, c.Name, c.DummyNumber, c.RedirectNumber, c.SortOrder);
+        new(c.Id, c.GenreId, c.Name, c.DummyNumber, c.RedirectNumber, c.SortOrder, c.IsFavorite, c.FavoriteOrder);
 }
 

@@ -41,7 +41,7 @@ public sealed class ChannelRepository
 
         // Fetch all channels
         const string channelSql = """
-            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, created_at, updated_at
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
             FROM channels
             ORDER BY 
                 CASE WHEN sort_order > 0 THEN sort_order ELSE 999999 END ASC,
@@ -70,8 +70,10 @@ public sealed class ChannelRepository
                     reader.GetInt32(3),
                     reader.GetInt32(4),
                     reader.GetInt32(5),
-                    DateTime.Parse(reader.GetString(6)),
-                    DateTime.Parse(reader.GetString(7))));
+                    reader.GetInt32(6) == 1,
+                    reader.GetInt32(7),
+                    DateTime.Parse(reader.GetString(8)),
+                    DateTime.Parse(reader.GetString(9))));
             }
         }
 
@@ -163,7 +165,7 @@ public sealed class ChannelRepository
         long newId = (long)(await cmd.ExecuteScalarAsync(ct))!;
 
         const string selectSql = """
-            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, created_at, updated_at
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
             FROM channels WHERE id = $id;
             """;
 
@@ -180,8 +182,10 @@ public sealed class ChannelRepository
             reader.GetInt32(3),
             reader.GetInt32(4),
             reader.GetInt32(5),
-            DateTime.Parse(reader.GetString(6)),
-            DateTime.Parse(reader.GetString(7)));
+            reader.GetInt32(6) == 1,
+            reader.GetInt32(7),
+            DateTime.Parse(reader.GetString(8)),
+            DateTime.Parse(reader.GetString(9)));
     }
 
     public async Task<Channel?> UpdateChannelAsync(int id, int genreId, string name, int dummyNumber, int redirectNumber, int sortOrder, CancellationToken ct = default)
@@ -208,7 +212,7 @@ public sealed class ChannelRepository
         if (rows == 0) return null;
 
         const string selectSql = """
-            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, created_at, updated_at
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
             FROM channels WHERE id = $id;
             """;
 
@@ -225,8 +229,10 @@ public sealed class ChannelRepository
             reader.GetInt32(3),
             reader.GetInt32(4),
             reader.GetInt32(5),
-            DateTime.Parse(reader.GetString(6)),
-            DateTime.Parse(reader.GetString(7)));
+            reader.GetInt32(6) == 1,
+            reader.GetInt32(7),
+            DateTime.Parse(reader.GetString(8)),
+            DateTime.Parse(reader.GetString(9)));
     }
 
     public async Task<bool> DeleteChannelAsync(int id, CancellationToken ct = default)
@@ -274,7 +280,7 @@ public sealed class ChannelRepository
 
         // Step 1: Search dummy_number
         const string dummySql = """
-            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, created_at, updated_at
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
             FROM channels
             WHERE dummy_number = $num
             ORDER BY 
@@ -297,14 +303,16 @@ public sealed class ChannelRepository
                     reader.GetInt32(3),
                     reader.GetInt32(4),
                     reader.GetInt32(5),
-                    DateTime.Parse(reader.GetString(6)),
-                    DateTime.Parse(reader.GetString(7)));
+                    reader.GetInt32(6) == 1,
+                    reader.GetInt32(7),
+                    DateTime.Parse(reader.GetString(8)),
+                    DateTime.Parse(reader.GetString(9)));
             }
         }
 
         // Step 2: Search redirect_number (without looping back)
         const string redirectSql = """
-            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, created_at, updated_at
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
             FROM channels
             WHERE redirect_number = $num
             ORDER BY 
@@ -327,11 +335,115 @@ public sealed class ChannelRepository
                     reader.GetInt32(3),
                     reader.GetInt32(4),
                     reader.GetInt32(5),
-                    DateTime.Parse(reader.GetString(6)),
-                    DateTime.Parse(reader.GetString(7)));
+                    reader.GetInt32(6) == 1,
+                    reader.GetInt32(7),
+                    DateTime.Parse(reader.GetString(8)),
+                    DateTime.Parse(reader.GetString(9)));
             }
         }
 
         return null;
+    }
+
+    public async Task<Channel?> ToggleFavoriteAsync(int id, CancellationToken ct = default)
+    {
+        await using SqliteConnection connection = new(_connectionString);
+        await connection.OpenAsync(ct);
+
+        // Get current state
+        const string getSql = "SELECT is_favorite FROM channels WHERE id = $id;";
+        await using SqliteCommand getCmd = connection.CreateCommand();
+        getCmd.CommandText = getSql;
+        getCmd.Parameters.AddWithValue("$id", id);
+        object? cur = await getCmd.ExecuteScalarAsync(ct);
+        if (cur is null) return null;
+
+        int current = Convert.ToInt32(cur);
+        int next = current == 1 ? 0 : 1;
+
+        // If turning on, get max favorite_order + 1
+        int favOrder = 0;
+        if (next == 1)
+        {
+            const string maxSql = "SELECT COALESCE(MAX(favorite_order), 0) + 1 FROM channels WHERE is_favorite = 1;";
+            await using SqliteCommand maxCmd = connection.CreateCommand();
+            maxCmd.CommandText = maxSql;
+            favOrder = Convert.ToInt32(await maxCmd.ExecuteScalarAsync(ct));
+        }
+
+        const string updateSql = """
+            UPDATE channels SET is_favorite = $fav, favorite_order = $order, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $id;
+            """;
+        await using SqliteCommand updateCmd = connection.CreateCommand();
+        updateCmd.CommandText = updateSql;
+        updateCmd.Parameters.AddWithValue("$fav", next);
+        updateCmd.Parameters.AddWithValue("$order", favOrder);
+        updateCmd.Parameters.AddWithValue("$id", id);
+        await updateCmd.ExecuteNonQueryAsync(ct);
+
+        const string selectSql = """
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
+            FROM channels WHERE id = $id;
+            """;
+        await using SqliteCommand selectCmd = connection.CreateCommand();
+        selectCmd.CommandText = selectSql;
+        selectCmd.Parameters.AddWithValue("$id", id);
+        await using SqliteDataReader reader = await selectCmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct)) return null;
+        return new Channel(
+            reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2),
+            reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5),
+            reader.GetInt32(6) == 1, reader.GetInt32(7),
+            DateTime.Parse(reader.GetString(8)), DateTime.Parse(reader.GetString(9)));
+    }
+
+    public async Task<IReadOnlyList<Channel>> GetFavoritesAsync(CancellationToken ct = default)
+    {
+        await using SqliteConnection connection = new(_connectionString);
+        await connection.OpenAsync(ct);
+
+        const string sql = """
+            SELECT id, genre_id, name, dummy_number, redirect_number, sort_order, is_favorite, favorite_order, created_at, updated_at
+            FROM channels
+            WHERE is_favorite = 1
+            ORDER BY
+                CASE WHEN favorite_order > 0 THEN favorite_order ELSE 999999 END ASC,
+                created_at ASC,
+                id ASC;
+            """;
+
+        List<Channel> result = [];
+        await using SqliteCommand cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        await using SqliteDataReader reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            result.Add(new Channel(
+                reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2),
+                reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5),
+                reader.GetInt32(6) == 1, reader.GetInt32(7),
+                DateTime.Parse(reader.GetString(8)), DateTime.Parse(reader.GetString(9))));
+        }
+        return result;
+    }
+
+    public async Task ReorderFavoritesAsync(IReadOnlyList<int> channelIds, CancellationToken ct = default)
+    {
+        await using SqliteConnection connection = new(_connectionString);
+        await connection.OpenAsync(ct);
+        await using SqliteTransaction tx = (SqliteTransaction)await connection.BeginTransactionAsync(ct);
+
+        for (int i = 0; i < channelIds.Count; i++)
+        {
+            await using SqliteCommand cmd = connection.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "UPDATE channels SET favorite_order = $order, updated_at = CURRENT_TIMESTAMP WHERE id = $id AND is_favorite = 1;";
+            cmd.Parameters.AddWithValue("$order", i + 1);
+            cmd.Parameters.AddWithValue("$id", channelIds[i]);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
     }
 }

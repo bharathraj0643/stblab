@@ -6,15 +6,13 @@ import type { Channel } from "@/lib/api";
 interface VirtualKeypadProps {
   isOpen: boolean;
   onToggle: () => void;
-  focusedColumn: "genre" | "channels";
+  focusedColumn: "genre" | "channels" | "sidebar";
   selectedChannelIndex: number | null;
   hoveredChannelIndex: number;
   currentGenreName: string;
   activeChannel: Channel | null;
-  autoTuneRemaining: number | null;
   dialBuffer: string;
   onDigitPress: (digit: string) => void;
-  onZeroPress: () => void;
   onChannelDown: () => void;
   onChannelUp: () => void;
   onOkPress: () => void;
@@ -26,10 +24,8 @@ export default function VirtualKeypad({
   selectedChannelIndex,
   currentGenreName,
   activeChannel,
-  autoTuneRemaining,
   dialBuffer,
   onDigitPress,
-  onZeroPress,
   onChannelDown,
   onChannelUp,
   onOkPress,
@@ -64,11 +60,7 @@ export default function VirtualKeypad({
         </div>
 
         <div className="keypad-status-right">
-          {autoTuneRemaining !== null && autoTuneRemaining > 0 ? (
-            <span className="keypad-autotune-pill" title="Auto-tune countdown active">
-              ⏱ {autoTuneRemaining}s
-            </span>
-          ) : dialBuffer ? (
+          {dialBuffer ? (
             <span className="keypad-dial-pill" title="Direct Dialing">
               #{dialBuffer}
             </span>
@@ -164,7 +156,7 @@ export default function VirtualKeypad({
           <span>9</span>
         </button>
 
-        {/* Row 4: CH ▲, 0 (or toggle focus), CH ▼ */}
+        {/* Row 4: CH ▲, 0, CH ▼ */}
         <button
           type="button"
           className="keypad-btn nav-ch"
@@ -179,14 +171,11 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn nav-zero"
-          onClick={onZeroPress}
-          aria-label={dialBuffer ? "Digit 0" : "Key 0 (Switch Genre / Channels Focus)"}
-          title={dialBuffer ? "Append 0 to dial" : "Press 0 to toggle Genre / Channels focus"}
+          onClick={() => onDigitPress("0")}
+          aria-label="Digit 0"
+          title="Digit 0"
         >
           <span>0</span>
-          <span className="keypad-btn-sub">
-            {dialBuffer ? "Digit" : "⇄ Focus"}
-          </span>
         </button>
 
         <button
@@ -223,4 +212,3 @@ export default function VirtualKeypad({
     </div>
   );
 }
-

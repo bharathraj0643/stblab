@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   type Genre,
   type Channel,
@@ -11,6 +11,8 @@ import {
   updateChannel,
   deleteChannel,
   reorderChannels,
+  toggleFavorite,
+  reorderFavorites,
 } from "@/lib/api";
 
 type EditModalProps = {
@@ -29,6 +31,20 @@ export default function EditModal({
   const [activeGenreId, setActiveGenreId] = useState<number | null>(
     selectedGenreId ?? (genres.length > 0 ? genres[0].id : null),
   );
+
+  useEffect(() => {
+    if (activeGenreId === null && genres.length > 0) {
+      setActiveGenreId(genres[0].id);
+    } else if (activeGenreId !== null && activeGenreId !== -1 && !genres.some((g) => g.id === activeGenreId) && genres.length > 0) {
+      setActiveGenreId(genres[0].id);
+    }
+  }, [genres, activeGenreId]);
+
+  // Derived favorites list
+  const allFavoriteChannels = useMemo(() => {
+    return genres.flatMap((g) => g.channels || []).filter((c) => c.isFavorite)
+      .sort((a, b) => a.favoriteOrder - b.favoriteOrder || a.id - b.id);
+  }, [genres]);
 
   // Genre form states
   const [isAddingGenre, setIsAddingGenre] = useState(false);
@@ -208,6 +224,24 @@ export default function EditModal({
     }
   };
 
+  // Favorites reordering
+  const handleMoveFavorite = async (index: number, direction: "up" | "down") => {
+    const channels = [...allFavoriteChannels];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= channels.length) return;
+    const [moved] = channels.splice(index, 1);
+    channels.splice(targetIndex, 0, moved);
+    setLoading(true);
+    try {
+      await reorderFavorites(channels.map((c) => c.id));
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -275,6 +309,14 @@ export default function EditModal({
             )}
 
             <div className="edit-list">
+              {allFavoriteChannels.length > 0 && (
+                <div
+                  className={`edit-item ${activeGenreId === -1 ? "active" : ""}`}
+                  onClick={() => setActiveGenreId(-1)}
+                >
+                  <span>⭐ Favorites ({allFavoriteChannels.length})</span>
+                </div>
+              )}
               {genres.map((g) => (
                 <div
                   key={g.id}
@@ -310,9 +352,13 @@ export default function EditModal({
           <div className="modal-pane">
             <div className="pane-title-row">
               <span className="pane-title">
-                {activeGenre ? `Channels in ${activeGenre.name}` : "Select a genre"}
+                {activeGenreId === -1
+                  ? "⭐ Favorites"
+                  : activeGenre
+                  ? `Channels in ${activeGenre.name}`
+                  : "Select a genre"}
               </span>
-              {activeGenre && (
+              {activeGenre && activeGenreId !== -1 && (
                 <button
                   className="btn-small"
                   onClick={handleStartAddChannel}
@@ -323,7 +369,7 @@ export default function EditModal({
               )}
             </div>
 
-            {(isAddingChannel || editingChannel) && (
+            {(isAddingChannel || editingChannel) && activeGenreId !== -1 && (
               <form className="form-card" onSubmit={handleSaveChannel}>
                 <div className="form-row">
                   <label>Channel Name</label>
@@ -388,7 +434,48 @@ export default function EditModal({
             )}
 
             <div className="edit-list">
-              {activeGenre?.channels && activeGenre.channels.length > 0 ? (
+              {activeGenreId === -1 ? (
+                allFavoriteChannels.length > 0 ? (
+                  allFavoriteChannels.map((c, i) => (
+                    <div key={c.id} className="edit-item">
+                      <div>
+                        <span style={{ color: "var(--focus)", fontWeight: 700, marginRight: "8px" }}>
+                          [{c.dummyNumber}]
+                        </span>
+                        <span>{c.name}</span>
+                      </div>
+                      <div className="item-actions">
+                        <button
+                          className="icon-action-btn"
+                          title="Move Up"
+                          disabled={i === 0 || loading}
+                          onClick={() => handleMoveFavorite(i, "up")}
+                        >▲</button>
+                        <button
+                          className="icon-action-btn"
+                          title="Move Down"
+                          disabled={i === allFavoriteChannels.length - 1 || loading}
+                          onClick={() => handleMoveFavorite(i, "down")}
+                        >▼</button>
+                        <button
+                          className="icon-action-btn fav-active-icon"
+                          title="Remove from favorites"
+                          onClick={async () => {
+                            setLoading(true);
+                            try { await toggleFavorite(c.id); await onRefresh(); }
+                            catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+                            finally { setLoading(false); }
+                          }}
+                        >♥</button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ color: "var(--dim)", padding: "20px 0", textAlign: "center" }}>
+                    No favorites yet. Click ♡ on any channel to add it.
+                  </div>
+                )
+              ) : activeGenre?.channels && activeGenre.channels.length > 0 ? (
                 activeGenre.channels.map((c, i) => (
                   <div key={c.id} className="edit-item">
                     <div>
@@ -402,6 +489,23 @@ export default function EditModal({
                     </div>
 
                     <div className="item-actions">
+                      <button
+                        className={`icon-action-btn${c.isFavorite ? " fav-active-icon" : ""}`}
+                        title={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            await toggleFavorite(c.id);
+                            await onRefresh();
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : String(err));
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      >
+                        {c.isFavorite ? "♥" : "♡"}
+                      </button>
                       <button
                         className="icon-action-btn"
                         title="Move Up"

@@ -8,11 +8,12 @@ import {
   getGenres,
   getState,
   tuneChannel,
+  toggleFavorite,
 } from "@/lib/api";
 import EditModal from "./components/EditModal";
 import VirtualKeypad from "./components/VirtualKeypad";
 
-const CHANNELS_PER_PAGE = 7;
+const CHANNELS_PER_PAGE = 11;
 const DIAL_TIMEOUT_MS = 3000;
 const STATE_POLL_MS = 3000;
 
@@ -20,15 +21,15 @@ export default function ChannelPickerPage() {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [stbState, setStbState] = useState<StbState | null>(null);
 
-  // Column focus: "genre" (parent) or "channels" (children)
-  const [focusedColumn, setFocusedColumn] = useState<"genre" | "channels">("channels");
+  // Column focus: "genre" (parent), "channels" (children), or "sidebar"
+  const [focusedColumn, setFocusedColumn] = useState<"genre" | "channels" | "sidebar">("channels");
+  const [sidebarFocusIdx, setSidebarFocusIdx] = useState<number>(0);
 
-  // Selection states
-  // Point 1: On load, always first genre is selected, first channel is hovered.
-  // selectedChannelIndex is null until the user presses ChannelDown.
+  // Selection & Hover states
   const [selectedGenreIndex, setSelectedGenreIndex] = useState<number>(0);
+  const [hoveredGenreIndex, setHoveredGenreIndex] = useState<number | null>(null);
   const [hoveredChannelIndex, setHoveredChannelIndex] = useState<number>(0);
-  const [selectedChannelIndex, setSelectedChannelIndex] = useState<number | null>(null);
+  const [selectedChannelIndex, setSelectedChannelIndex] = useState<number | null>(0);
 
   // Direct number dialing state (Point 5)
   const [dialBuffer, setDialBuffer] = useState<string>("");
@@ -39,14 +40,6 @@ export default function ChannelPickerPage() {
   // Tuning status
   const [tuningStatus, setTuningStatus] = useState<string | null>(null);
   const [lastTuned, setLastTuned] = useState<string | null>(null);
-
-  // Auto-tune on dwell (5 seconds after moving and settling on a channel)
-  const autoTuneTimerRef = useRef<number | null>(null);
-  const autoTuneCountdownRef = useRef<number | null>(null);
-  const activeTimeHashRef = useRef<string | null>(null);
-  const lastTriggeredChannelIdRef = useRef<number | null>(null);
-  const executedTimeHashesRef = useRef<Set<string>>(new Set());
-  const [autoTuneRemaining, setAutoTuneRemaining] = useState<number | null>(null);
 
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
@@ -88,19 +81,38 @@ export default function ChannelPickerPage() {
     };
   }, []);
 
+  // Build display genres: synthetic ⭐ Favorites genre at top (if there are any favorites)
+  const allFavoriteChannels = useMemo(() => {
+    return genres.flatMap((g) => g.channels || []).filter((c) => c.isFavorite)
+      .sort((a, b) => {
+        if (a.favoriteOrder !== b.favoriteOrder) return a.favoriteOrder - b.favoriteOrder;
+        return a.id - b.id;
+      });
+  }, [genres]);
+
+  const displayGenres = useMemo<Genre[]>(() => {
+    if (allFavoriteChannels.length === 0) return genres;
+    const favGenre: Genre = {
+      id: -1,
+      name: "⭐ Favorites",
+      sortOrder: -1,
+      channels: allFavoriteChannels,
+    };
+    return [favGenre, ...genres];
+  }, [genres, allFavoriteChannels]);
+
   // Safe active genre
   const currentGenre = useMemo(() => {
-    if (genres.length === 0) return null;
-    const idx = Math.max(0, Math.min(selectedGenreIndex, genres.length - 1));
-    return genres[idx];
-  }, [genres, selectedGenreIndex]);
+    if (displayGenres.length === 0) return null;
+    const idx = Math.max(0, Math.min(selectedGenreIndex, displayGenres.length - 1));
+    return displayGenres[idx];
+  }, [displayGenres, selectedGenreIndex]);
 
   const currentChannels = useMemo(() => {
     return currentGenre?.channels || [];
   }, [currentGenre]);
 
-  // Point 2: Chunked / Paged list for viewport height
-  // The active channel index is either selected or hovered
+  // Chunked / Paged list for viewport height (11 items per page)
   const activeChannelIdx = selectedChannelIndex ?? hoveredChannelIndex;
   const currentChunkIndex = Math.floor(activeChannelIdx / CHANNELS_PER_PAGE);
   const totalChunks = Math.max(1, Math.ceil(currentChannels.length / CHANNELS_PER_PAGE));
@@ -110,10 +122,9 @@ export default function ChannelPickerPage() {
     return currentChannels.slice(start, start + CHANNELS_PER_PAGE);
   }, [currentChannels, currentChunkIndex]);
 
-  // Point 7: Main Backend Tuning Logic
+  // Point 7: Main Backend Tuning Logic (only triggered on user action: OK, dial, click)
   const handleTune = useCallback(
     async (channel: Channel) => {
-      lastTriggeredChannelIdRef.current = channel.id;
       setTuningStatus(`Tuning ${channel.name} (${channel.redirectNumber})...`);
       try {
         await tuneChannel(channel.redirectNumber, channel.name);
@@ -126,92 +137,6 @@ export default function ChannelPickerPage() {
     },
     [],
   );
-
-  // Cancels any active auto-tune timer and invalidates the active timehash
-  const cancelAutoTune = useCallback(() => {
-    if (autoTuneTimerRef.current !== null) {
-      window.clearTimeout(autoTuneTimerRef.current);
-      autoTuneTimerRef.current = null;
-    }
-    if (autoTuneCountdownRef.current !== null) {
-      window.clearInterval(autoTuneCountdownRef.current);
-      autoTuneCountdownRef.current = null;
-    }
-    activeTimeHashRef.current = null;
-    setAutoTuneRemaining(null);
-  }, []);
-
-  // Schedules auto-tune after 5 seconds of settling on a newly moved channel
-  const scheduleAutoTune = useCallback(
-    (channel: Channel) => {
-      // 1. Cancel previous pending timer
-      cancelAutoTune();
-
-      // 2. Only trigger if the channel is different from the immediate past triggered channel
-      if (lastTriggeredChannelIdRef.current === channel.id) {
-        return;
-      }
-
-      // 3. Unique moment timehash
-      const momentTimestamp = Date.now();
-      const timeHash = `th_${momentTimestamp}_ch${channel.id}_${Math.random().toString(36).slice(2, 9)}`;
-      activeTimeHashRef.current = timeHash;
-
-      // 4. Start visual countdown
-      const totalSeconds = 5;
-      setAutoTuneRemaining(totalSeconds);
-
-      autoTuneCountdownRef.current = window.setInterval(() => {
-        const elapsed = Math.floor((Date.now() - momentTimestamp) / 1000);
-        const remaining = Math.max(0, totalSeconds - elapsed);
-        setAutoTuneRemaining(remaining);
-        if (remaining <= 0 && autoTuneCountdownRef.current !== null) {
-          window.clearInterval(autoTuneCountdownRef.current);
-          autoTuneCountdownRef.current = null;
-        }
-      }, 250);
-
-      // 5. 5-second timer
-      autoTuneTimerRef.current = window.setTimeout(() => {
-        // Guard 1: Verify the timehash is still active (user didn't move away)
-        if (activeTimeHashRef.current !== timeHash) {
-          return;
-        }
-
-        // Guard 2: Verify this timehash hasn't already executed
-        if (executedTimeHashesRef.current.has(timeHash)) {
-          return;
-        }
-
-        // Guard 3: Stale state / refresh check: must fire within 6.5s of creation
-        if (Date.now() - momentTimestamp > 6500) {
-          cancelAutoTune();
-          return;
-        }
-
-        // Guard 4: Must not re-trigger the already triggered channel
-        if (lastTriggeredChannelIdRef.current === channel.id) {
-          cancelAutoTune();
-          return;
-        }
-
-        executedTimeHashesRef.current.add(timeHash);
-        lastTriggeredChannelIdRef.current = channel.id;
-        cancelAutoTune();
-
-        // Auto-trigger OK on that channel!
-        void handleTune(channel);
-      }, 5000);
-    },
-    [cancelAutoTune, handleTune],
-  );
-
-  // Clean up any timers on unmount (refresh immunity)
-  useEffect(() => {
-    return () => {
-      cancelAutoTune();
-    };
-  }, [cancelAutoTune]);
 
   // Clear direct dialing buffer
   const clearDialer = useCallback(() => {
@@ -253,7 +178,6 @@ export default function ChannelPickerPage() {
       }
 
       if (match) {
-        cancelAutoTune();
         // Switch to this channel's genre & channel
         const gIdx = genres.findIndex((g) => g.id === match.genre.id);
         if (gIdx >= 0) {
@@ -275,13 +199,12 @@ export default function ChannelPickerPage() {
 
       clearDialer();
     },
-    [genres, handleTune, clearDialer, cancelAutoTune],
+    [genres, handleTune, clearDialer],
   );
 
   // Direct number key buffering (Point 5)
   const handleDigitPress = useCallback(
     (digit: string) => {
-      cancelAutoTune();
       const next = (dialBuffer + digit).slice(-3); // Maximum 3 digits
       setDialBuffer(next);
 
@@ -305,33 +228,20 @@ export default function ChannelPickerPage() {
         }, DIAL_TIMEOUT_MS);
       }
     },
-    [cancelAutoTune, dialBuffer, executeDialSearch],
+    [dialBuffer, executeDialSearch],
   );
 
-  // Switch Focus with '0' (or append '0' when dialing)
-  const handleZeroPress = useCallback(() => {
-    if (dialBuffer.length > 0 && /[1-9]/.test(dialBuffer)) {
-      handleDigitPress("0");
-    } else {
-      cancelAutoTune();
-      clearDialer();
-      setFocusedColumn((prev) => (prev === "channels" ? "genre" : "channels"));
-    }
-  }, [dialBuffer, handleDigitPress, cancelAutoTune, clearDialer]);
-
-  // ----------------- REMOTE NAVIGATION (Points 1, 2, 3) -----------------
+  // ----------------- REMOTE NAVIGATION (Points 1, 2) -----------------
 
   // Channel Down navigation
   const handleChannelDown = useCallback(() => {
-    cancelAutoTune();
-
     if (focusedColumn === "genre") {
       // Cyclic genre navigation
-      if (genres.length === 0) return;
-      const next = (selectedGenreIndex + 1) % genres.length;
+      if (displayGenres.length === 0) return;
+      const next = (selectedGenreIndex + 1) % displayGenres.length;
       setSelectedGenreIndex(next);
       setHoveredChannelIndex(0);
-      setSelectedChannelIndex(null);
+      setSelectedChannelIndex(0); // selection selects top channel column (not trigger)
       return;
     }
 
@@ -339,38 +249,31 @@ export default function ChannelPickerPage() {
     if (currentChannels.length === 0) return;
 
     if (selectedChannelIndex === null) {
-      // Point 1: First press of ChannelDown selects first channel (does not trigger play)
       setSelectedChannelIndex(0);
       setHoveredChannelIndex(0);
-      scheduleAutoTune(currentChannels[0]);
     } else {
-      // Point 2: Cyclic selection: wrap from bottom to top
+      // Cyclic selection: wrap from bottom to top
       const next = (selectedChannelIndex + 1) % currentChannels.length;
       setSelectedChannelIndex(next);
       setHoveredChannelIndex(next);
-      scheduleAutoTune(currentChannels[next]);
     }
   }, [
-    cancelAutoTune,
     focusedColumn,
-    genres.length,
+    displayGenres.length,
     selectedGenreIndex,
-    currentChannels,
+    currentChannels.length,
     selectedChannelIndex,
-    scheduleAutoTune,
   ]);
 
   // Channel Up navigation
   const handleChannelUp = useCallback(() => {
-    cancelAutoTune();
-
     if (focusedColumn === "genre") {
       // Cyclic genre navigation: wrap from top to bottom
-      if (genres.length === 0) return;
-      const prev = (selectedGenreIndex - 1 + genres.length) % genres.length;
+      if (displayGenres.length === 0) return;
+      const prev = (selectedGenreIndex - 1 + displayGenres.length) % displayGenres.length;
       setSelectedGenreIndex(prev);
       setHoveredChannelIndex(0);
-      setSelectedChannelIndex(null);
+      setSelectedChannelIndex(0); // selection selects top channel column (not trigger)
       return;
     }
 
@@ -378,97 +281,69 @@ export default function ChannelPickerPage() {
     if (currentChannels.length === 0) return;
 
     if (selectedChannelIndex === null) {
-      // If hovering, select last channel cyclically
       const last = currentChannels.length - 1;
       setSelectedChannelIndex(last);
       setHoveredChannelIndex(last);
-      scheduleAutoTune(currentChannels[last]);
     } else {
-      // Point 2: Cyclic selection: wrap from top (0) to bottom
+      // Cyclic selection: wrap from top (0) to bottom
       const prev = (selectedChannelIndex - 1 + currentChannels.length) % currentChannels.length;
       setSelectedChannelIndex(prev);
       setHoveredChannelIndex(prev);
-      scheduleAutoTune(currentChannels[prev]);
     }
   }, [
-    cancelAutoTune,
     focusedColumn,
-    genres.length,
+    displayGenres.length,
     selectedGenreIndex,
-    currentChannels,
+    currentChannels.length,
     selectedChannelIndex,
-    scheduleAutoTune,
   ]);
 
   // Page Left (Previous Page)
   const handlePrevPage = useCallback(() => {
     if (totalChunks <= 1 || currentChannels.length === 0) return;
-    cancelAutoTune();
     const prevChunk = (currentChunkIndex - 1 + totalChunks) % totalChunks;
     const targetIdx = Math.min(prevChunk * CHANNELS_PER_PAGE, currentChannels.length - 1);
 
     setFocusedColumn("channels");
-    if (selectedChannelIndex !== null) {
-      setSelectedChannelIndex(targetIdx);
-      setHoveredChannelIndex(targetIdx);
-      scheduleAutoTune(currentChannels[targetIdx]);
-    } else {
-      setHoveredChannelIndex(targetIdx);
-    }
+    setSelectedChannelIndex(targetIdx);
+    setHoveredChannelIndex(targetIdx);
   }, [
     totalChunks,
-    currentChannels,
+    currentChannels.length,
     currentChunkIndex,
-    cancelAutoTune,
-    selectedChannelIndex,
-    scheduleAutoTune,
   ]);
 
   // Page Right (Next Page)
   const handleNextPage = useCallback(() => {
     if (totalChunks <= 1 || currentChannels.length === 0) return;
-    cancelAutoTune();
     const nextChunk = (currentChunkIndex + 1) % totalChunks;
     const targetIdx = Math.min(nextChunk * CHANNELS_PER_PAGE, currentChannels.length - 1);
 
     setFocusedColumn("channels");
-    if (selectedChannelIndex !== null) {
-      setSelectedChannelIndex(targetIdx);
-      setHoveredChannelIndex(targetIdx);
-      scheduleAutoTune(currentChannels[targetIdx]);
-    } else {
-      setHoveredChannelIndex(targetIdx);
-    }
+    setSelectedChannelIndex(targetIdx);
+    setHoveredChannelIndex(targetIdx);
   }, [
     totalChunks,
-    currentChannels,
+    currentChannels.length,
     currentChunkIndex,
-    cancelAutoTune,
-    selectedChannelIndex,
-    scheduleAutoTune,
   ]);
 
   // OK button: triggers currently selected channel
   const handleOkPress = useCallback(() => {
-    cancelAutoTune();
-
     // If user was actively dialing digits, immediately execute search
     if (dialBuffer.length > 0) {
       executeDialSearch(dialBuffer);
       return;
     }
 
-    // Point 1: Triggers current selected channel regardless of mouse pointer!
     if (currentChannels.length === 0) return;
 
     const targetIdx = selectedChannelIndex ?? hoveredChannelIndex;
     if (targetIdx >= 0 && targetIdx < currentChannels.length) {
-      // Ensure it is marked selected
       setSelectedChannelIndex(targetIdx);
       void handleTune(currentChannels[targetIdx]);
     }
   }, [
-    cancelAutoTune,
     dialBuffer,
     executeDialSearch,
     currentChannels,
@@ -477,9 +352,23 @@ export default function ChannelPickerPage() {
     handleTune,
   ]);
 
+  // handleToggleFavorite
+  const handleToggleFavorite = useCallback(
+    async (channelId: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        await toggleFavorite(channelId);
+        await loadGenres();
+      } catch (err) {
+        console.error("Failed to toggle favorite:", err);
+      }
+    },
+    [loadGenres],
+  );
+
   // Global Keydown Handler (Physical Remote & Keyboard)
   useEffect(() => {
-    // Point 6: Suspend all remote keys while Edit UI is open
+    // Suspend remote keys while Edit UI is open
     if (isEditOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -489,7 +378,6 @@ export default function ChannelPickerPage() {
         return;
       }
 
-      const now = Date.now();
       const key = e.key;
       const keyCode = e.keyCode;
 
@@ -502,63 +390,76 @@ export default function ChannelPickerPage() {
 
       if (isChDown) {
         e.preventDefault();
-        handleChannelDown();
+        if (focusedColumn === "sidebar") {
+          setSidebarFocusIdx((prev) => (prev + 1) % 2);
+        } else {
+          handleChannelDown();
+        }
         return;
       }
 
       if (isChUp) {
         e.preventDefault();
-        handleChannelUp();
+        if (focusedColumn === "sidebar") {
+          setSidebarFocusIdx((prev) => (prev - 1 + 2) % 2);
+        } else {
+          handleChannelUp();
+        }
         return;
       }
 
       if (isOk) {
         e.preventDefault();
+        if (focusedColumn === "sidebar") {
+          if (sidebarFocusIdx === 0) {
+            setIsKeypadOpen((prev) => !prev);
+          } else if (sidebarFocusIdx === 1) {
+            setIsEditOpen(true);
+          }
+          return;
+        }
         handleOkPress();
         return;
       }
 
-      // Left / Right keys as auxiliary navigation
+      // Left key: switch direction
       if (key === "ArrowLeft") {
         e.preventDefault();
-        cancelAutoTune();
-        setFocusedColumn("genre");
+        if (focusedColumn === "sidebar") {
+          setFocusedColumn("channels");
+        } else {
+          setFocusedColumn("genre");
+        }
         return;
       }
+
+      // Right key: switch direction to next column
       if (key === "ArrowRight") {
         e.preventDefault();
-        setFocusedColumn("channels");
+        if (focusedColumn === "genre") {
+          setFocusedColumn("channels");
+          const topIdx = currentChunkIndex * CHANNELS_PER_PAGE;
+          setSelectedChannelIndex(topIdx);
+          setHoveredChannelIndex(topIdx);
+        } else if (focusedColumn === "channels") {
+          setFocusedColumn("sidebar");
+          setSidebarFocusIdx(0);
+        }
         return;
       }
 
-      // Point 3 (Updated): Switch Genre / Channels Column Focus with 0, 00, or 000
-      const isZeroKey =
-        key === "0" ||
-        key === "00" ||
-        key === "000" ||
-        e.code === "Digit0" ||
-        e.code === "Numpad0" ||
-        keyCode === 48 ||
-        keyCode === 96;
+      // Point 5: Direct Number Entry (0–9) - standard digit typing, no column toggle
+      const isDigit =
+        (key >= "0" && key <= "9") ||
+        (keyCode >= 48 && keyCode <= 57) ||
+        (keyCode >= 96 && keyCode <= 105);
 
-      if (isZeroKey) {
-        e.preventDefault();
-        handleZeroPress();
-        return;
-      }
-
-      // Point 5: Direct Number Entry (1–9)
-      const isNonZeroDigit =
-        (key >= "1" && key <= "9") ||
-        (keyCode >= 49 && keyCode <= 57) ||
-        (keyCode >= 97 && keyCode <= 105);
-
-      if (isNonZeroDigit) {
+      if (isDigit) {
         e.preventDefault();
         const digit =
-          key >= "1" && key <= "9"
+          key >= "0" && key <= "9"
             ? key
-            : String(keyCode >= 97 ? keyCode - 96 : keyCode - 48);
+            : String(keyCode >= 96 ? keyCode - 96 : keyCode - 48);
         handleDigitPress(digit);
         return;
       }
@@ -566,7 +467,6 @@ export default function ChannelPickerPage() {
       // Edit shortcut: 'e' or 'E'
       if (key === "e" || key === "E") {
         e.preventDefault();
-        cancelAutoTune();
         setIsEditOpen(true);
         return;
       }
@@ -576,11 +476,12 @@ export default function ChannelPickerPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     isEditOpen,
-    cancelAutoTune,
+    focusedColumn,
+    sidebarFocusIdx,
+    currentChunkIndex,
     handleChannelDown,
     handleChannelUp,
     handleOkPress,
-    handleZeroPress,
     handleDigitPress,
   ]);
 
@@ -595,16 +496,17 @@ export default function ChannelPickerPage() {
           </h2>
 
           <div className="picker-list">
-            {genres.map((g, idx) => (
+            {displayGenres.map((g, idx) => (
               <div
                 key={g.id}
-                className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""}`}
+                className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""} ${idx === hoveredGenreIndex ? "hovered" : ""}`}
+                onMouseEnter={() => setHoveredGenreIndex(idx)}
+                onMouseLeave={() => setHoveredGenreIndex(null)}
                 onClick={() => {
-                  cancelAutoTune();
                   setSelectedGenreIndex(idx);
-                  setHoveredChannelIndex(0);
-                  setSelectedChannelIndex(null);
                   setFocusedColumn("channels");
+                  setSelectedChannelIndex(0);
+                  setHoveredChannelIndex(0);
                 }}
               >
                 <span>{g.name}</span>
@@ -658,7 +560,6 @@ export default function ChannelPickerPage() {
                     key={c.id}
                     className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
                     onClick={() => {
-                      cancelAutoTune();
                       setSelectedChannelIndex(absoluteIdx);
                       setFocusedColumn("channels");
                       void handleTune(c);
@@ -667,6 +568,14 @@ export default function ChannelPickerPage() {
                     <span className="num-badge">{c.dummyNumber}</span>
                     <span className="chan-name">{c.name}</span>
                     <span className="redirect-hint">→ {c.redirectNumber}</span>
+                    <button
+                      className={`fav-btn ${c.isFavorite ? "fav-active" : ""}`}
+                      onClick={(e) => handleToggleFavorite(c.id, e)}
+                      title={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                      aria-label={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      {c.isFavorite ? "♥" : "♡"}
+                    </button>
                   </div>
                 );
               })
@@ -685,7 +594,7 @@ export default function ChannelPickerPage() {
               <h1>StbLab Picker</h1>
               <button
                 type="button"
-                className={`keypad-toggle-btn ${isKeypadOpen ? "active" : ""}`}
+                className={`keypad-toggle-btn ${isKeypadOpen ? "active" : ""} ${focusedColumn === "sidebar" && sidebarFocusIdx === 0 ? "sidebar-focused" : ""}`}
                 onClick={() => setIsKeypadOpen((prev) => !prev)}
                 aria-expanded={isKeypadOpen}
                 title={isKeypadOpen ? "Hide Virtual Number Pad" : "Show Virtual Number Pad"}
@@ -709,10 +618,8 @@ export default function ChannelPickerPage() {
             hoveredChannelIndex={hoveredChannelIndex}
             currentGenreName={currentGenre?.name || "Genre"}
             activeChannel={currentChannels[activeChannelIdx] ?? null}
-            autoTuneRemaining={autoTuneRemaining}
             dialBuffer={dialBuffer}
             onDigitPress={handleDigitPress}
-            onZeroPress={handleZeroPress}
             onChannelDown={handleChannelDown}
             onChannelUp={handleChannelUp}
             onOkPress={handleOkPress}
@@ -756,15 +663,6 @@ export default function ChannelPickerPage() {
             </div>
           )}
 
-          {/* Auto-tune dwell countdown indicator */}
-          {autoTuneRemaining !== null && autoTuneRemaining > 0 && !dialBuffer && (
-            <div className="autotune-badge">
-              <div className="autotune-label">Auto-tuning in</div>
-              <div className="autotune-count">{autoTuneRemaining}s</div>
-              <div className="autotune-hint">Press OK to tune now or move to cancel</div>
-            </div>
-          )}
-
           {/* Tuning status message */}
           {tuningStatus && (
             <div
@@ -785,16 +683,16 @@ export default function ChannelPickerPage() {
           {/* Navigation Hints */}
           <div className="hints-card">
             <div>
-              <b>CH ▼ / ▲</b>: Next / Prev channel
+              <b>◀ / ▶</b>: Switch Genre / Channels
             </div>
             <div>
-              <b>0 / 00 / 000</b>: Switch Genre / Channels
+              <b>CH ▼ / ▲</b>: Next / Prev channel
             </div>
             <div>
               <b>OK (Enter)</b>: Tune selected
             </div>
             <div>
-              <b>1–9</b>: Dial number (within 3s)
+              <b>0–9</b>: Dial number (within 3s)
             </div>
           </div>
         </div>
@@ -803,11 +701,8 @@ export default function ChannelPickerPage() {
         <div className="sidebar-bottom">
           <button
             type="button"
-            className="edit-btn"
-            onClick={() => {
-              cancelAutoTune();
-              setIsEditOpen(true);
-            }}
+            className={`edit-btn ${focusedColumn === "sidebar" && sidebarFocusIdx === 1 ? "sidebar-focused" : ""}`}
+            onClick={() => setIsEditOpen(true)}
             aria-label="Edit Channels and Genres"
           >
             <span>⚙</span>

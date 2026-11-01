@@ -8,7 +8,9 @@ public sealed record ChannelDto(
     string Name,
     int DummyNumber,
     int RedirectNumber,
-    int SortOrder);
+    int SortOrder,
+    bool IsFavorite,
+    int FavoriteOrder);
 
 public sealed record GenreDto(
     int Id,
@@ -79,6 +81,12 @@ public sealed class ReorderChannelsRequest
     [Required]
     public int GenreId { get; set; }
 
+    [Required]
+    public List<int> ChannelIds { get; set; } = [];
+}
+
+public sealed class ReorderFavoritesRequest
+{
     [Required]
     public List<int> ChannelIds { get; set; } = [];
 }

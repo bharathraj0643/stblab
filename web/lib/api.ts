@@ -64,11 +64,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(messageFrom(payload, response.status));
   }
 
-  if (payload === null) {
-    throw new Error("The API returned an empty response.");
-  }
-
-  return payload as T;
+  return (payload ?? undefined) as T;
 }
 
 export function getState(): Promise<StbState> {
@@ -109,6 +105,8 @@ export type Channel = {
   dummyNumber: number;
   redirectNumber: number;
   sortOrder: number;
+  isFavorite: boolean;
+  favoriteOrder: number;
 };
 
 export type Genre = {
@@ -198,5 +196,23 @@ export function tuneChannel(redirectNumber: number, channelName?: string): Promi
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ redirectNumber, channelName }),
+  });
+}
+
+export function toggleFavorite(id: number): Promise<Channel> {
+  return request<Channel>(`/channels/${id}/favorite`, {
+    method: "POST",
+  });
+}
+
+export function getFavorites(): Promise<Channel[]> {
+  return request<Channel[]>("/channels/favorites");
+}
+
+export function reorderFavorites(channelIds: number[]): Promise<void> {
+  return request<void>("/channels/favorites/reorder", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ channelIds }),
   });
 }

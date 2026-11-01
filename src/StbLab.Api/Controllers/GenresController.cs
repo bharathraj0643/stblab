@@ -62,6 +62,6 @@ public sealed class GenresController(ChannelRepository repo) : ControllerBase
         new(g.Id, g.Name, g.SortOrder, g.Channels.Select(MapChannel).ToList());
 
     private static ChannelDto MapChannel(Channel c) =>
-        new(c.Id, c.GenreId, c.Name, c.DummyNumber, c.RedirectNumber, c.SortOrder);
+        new(c.Id, c.GenreId, c.Name, c.DummyNumber, c.RedirectNumber, c.SortOrder, c.IsFavorite, c.FavoriteOrder);
 }
 

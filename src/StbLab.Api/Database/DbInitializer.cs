@@ -53,6 +53,27 @@ public static class DbInitializer
             """;
         command.ExecuteNonQuery();
 
+        // Migration: add favorite columns if missing
+        using SqliteCommand migCmd = connection.CreateCommand();
+        migCmd.CommandText = """
+            SELECT COUNT(*) FROM pragma_table_info('channels') WHERE name='is_favorite';
+            """;
+        long hasFav = (long)(migCmd.ExecuteScalar() ?? 0L);
+        if (hasFav == 0)
+        {
+            using SqliteCommand addFav = connection.CreateCommand();
+            addFav.CommandText = """
+                ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;
+                """;
+            addFav.ExecuteNonQuery();
+
+            using SqliteCommand addFavOrder = connection.CreateCommand();
+            addFavOrder.CommandText = """
+                ALTER TABLE channels ADD COLUMN favorite_order INTEGER NOT NULL DEFAULT 0;
+                """;
+            addFavOrder.ExecuteNonQuery();
+        }
+
         // Seed default channels if genres table is empty
         using SqliteCommand countCmd = connection.CreateCommand();
         countCmd.CommandText = "SELECT COUNT(*) FROM genres;";

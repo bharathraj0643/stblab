@@ -164,16 +164,22 @@ html, body {
 .picker-list {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 .genre-item {
-  padding: 15px 22px;
-  font-size: 22px;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: calc(100% / 11);
+  box-sizing: border-box;
+  padding: 0 clamp(8px, 1.2vw, 18px);
+  font-size: clamp(13px, 1.9vh, 20px);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -185,10 +191,18 @@ html, body {
 }
 
 .genre-item .count-badge {
-  font-size: 14px;
+  font-size: clamp(11px, 1.4vh, 14px);
   font-family: var(--mono);
   color: inherit;
   opacity: 0.7;
+}
+
+/* Hovered genre (User request: genre column hover state) */
+.genre-item:hover,
+.genre-item.hovered {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-left-color: rgba(247, 220, 28, 0.6);
 }
 
 /* Selected genre */
@@ -206,22 +220,26 @@ html, body {
 }
 
 .channel-item {
-  padding: 14px 24px;
-  font-size: 23px;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: calc(100% / 11);
+  box-sizing: border-box;
+  padding: 0 clamp(8px, 1.4vw, 20px);
+  font-size: clamp(14px, 2vh, 21px);
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 16px;
-  border: 3px solid transparent;
+  gap: clamp(8px, 1.2vw, 16px);
+  border: 2px solid transparent;
   color: var(--text);
   cursor: pointer;
   transition: all 0.08s ease-in-out;
 }
 
 .channel-item .num-badge {
-  min-width: 62px;
+  min-width: clamp(38px, 3.8vw, 58px);
   font-family: var(--mono);
-  font-size: 20px;
+  font-size: clamp(13px, 1.9vh, 19px);
   font-weight: 700;
   color: var(--dim);
 }
@@ -234,23 +252,24 @@ html, body {
 }
 
 .channel-item .redirect-hint {
-  font-size: 15px;
+  font-size: clamp(11px, 1.3vh, 14px);
   font-family: var(--mono);
   color: #7980a4;
   background: rgba(0, 0, 0, 0.25);
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 4px;
 }
 
-/* Hovered state (Point 1: initial load preview) */
+/* Hovered state */
+.channel-item:hover,
 .channel-item.hovered {
   border-color: rgba(247, 220, 28, 0.45);
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* Selected state (Point 1: after pressing ChannelDown) */
+/* Selected state (immediate selection color on channel) */
 .channel-item.selected {
-  border-color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
   background: rgba(255, 255, 255, 0.12);
 }
 
@@ -437,17 +456,6 @@ html, body {
   font-size: 11px;
 }
 
-.keypad-autotune-pill {
-  background: #192720;
-  border: 1px solid var(--link);
-  color: #7ce698;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 3px;
-  animation: pulse-autotune 1.5s infinite ease-in-out;
-}
-
 .keypad-dial-pill {
   background: #242217;
   border: 1px solid var(--focus);
@@ -629,51 +637,6 @@ html, body {
   height: 100%;
   background: var(--focus);
   transition: width 0.1s linear;
-}
-
-/* Auto-Tune Badge */
-.autotune-badge {
-  background: #16241c;
-  border: 2px solid var(--link);
-  border-radius: 6px;
-  padding: 12px;
-  text-align: center;
-  animation: pulse-autotune 1.5s infinite ease-in-out;
-}
-
-@keyframes pulse-autotune {
-  0%, 100% {
-    border-color: var(--link);
-    box-shadow: 0 0 0 rgba(74, 194, 107, 0);
-  }
-  50% {
-    border-color: #7ce698;
-    box-shadow: 0 0 14px rgba(74, 194, 107, 0.45);
-  }
-}
-
-.autotune-label {
-  font-size: 11px;
-  font-family: var(--mono);
-  color: var(--link);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 2px;
-}
-
-.autotune-count {
-  font-size: 32px;
-  font-family: var(--mono);
-  font-weight: 700;
-  color: #a4f5ba;
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-}
-
-.autotune-hint {
-  font-size: 11px;
-  color: var(--dim);
-  margin-top: 4px;
 }
 
 /* Instructions card */
@@ -927,3 +890,146 @@ html, body {
   cursor: pointer;
 }
 .btn-secondary:hover { color: #fff; }
+
+/* ================== MOBILE & RESPONSIVE LAYOUT ================== */
+@media (max-width: 768px) {
+  .picker-container {
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .picker-main {
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    border-right: none;
+    border-bottom: 2px solid #232538;
+    grid-template-columns: 36% 64%;
+  }
+
+  .picker-sidebar {
+    width: 100%;
+    height: auto;
+    min-height: 52px;
+    padding: 8px 14px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: #0f1016;
+  }
+
+  .sidebar-top {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    max-height: none;
+    overflow: visible;
+    flex: 1;
+    padding: 0;
+  }
+
+  .sidebar-brand h1 {
+    font-size: 13px;
+  }
+
+  .keypad-toggle-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .telemetry-card,
+  .hints-card,
+  .dialer-badge {
+    display: none;
+  }
+
+  .sidebar-bottom {
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .edit-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .col-header {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .page-nav-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .col-header .page-pill {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .channel-item {
+    padding: 0 6px;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .channel-item .num-badge {
+    min-width: 30px;
+    font-size: 12px;
+  }
+
+  .channel-item .redirect-hint {
+    font-size: 10px;
+    padding: 1px 3px;
+  }
+
+  .genre-item {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .genre-item .count-badge {
+    font-size: 10px;
+  }
+
+  .virtual-keypad {
+    position: fixed;
+    bottom: 56px;
+    left: 8px;
+    right: 8px;
+    z-index: 100;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* Favorite heart button in channel items */
+.fav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  color: var(--dim);
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.1s;
+}
+.fav-btn:hover { color: #e55; transform: scale(1.2); }
+.fav-btn.fav-active { color: #e44; }
+
+/* Favorite icon in edit modal */
+.fav-active-icon { color: #e44 !important; }
+
+/* Sidebar focused state (keyboard navigation) */
+.sidebar-focused {
+  outline: 2px solid var(--focus) !important;
+  outline-offset: 2px;
+}
