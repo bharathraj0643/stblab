@@ -313,23 +313,14 @@ export default function ChannelPickerPage() {
     selectedChannelIndex,
   ]);
 
-  // Physical CH+ / CH- keys move the selection and tune the channel they land on.
-  const handleRemoteChannelStep = useCallback(
-    (direction: "up" | "down") => {
-      if (focusedColumn === "sidebar" || currentChannels.length === 0) return;
-
-      const currentIndex = selectedChannelIndex ?? hoveredChannelIndex;
-      const nextIndex = direction === "down"
-        ? (currentIndex + 1) % currentChannels.length
-        : (currentIndex - 1 + currentChannels.length) % currentChannels.length;
-
-      setFocusedColumn("channels");
-      setSelectedChannelIndex(nextIndex);
-      setHoveredChannelIndex(nextIndex);
-      void handleTune(currentChannels[nextIndex]);
-    },
-    [focusedColumn, currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune],
-  );
+  // Physical CH+ / CH- keys tune the current selection without moving it.
+  const handleRemoteChannelTune = useCallback(() => {
+    if (currentChannels.length === 0) return;
+    const targetIndex = selectedChannelIndex ?? hoveredChannelIndex;
+    if (targetIndex >= 0 && targetIndex < currentChannels.length) {
+      void handleTune(currentChannels[targetIndex]);
+    }
+  }, [currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune]);
 
   // Page Left (Previous Page)
   const handlePrevPage = useCallback(() => {
@@ -416,22 +407,41 @@ export default function ChannelPickerPage() {
       const key = e.key;
       const keyCode = e.keyCode;
 
-      // ChannelDown detection: key "ChannelDown", code "PageDown", keyCode 34, ArrowDown
-      const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34 || key === "ArrowDown";
-      // ChannelUp detection: key "ChannelUp", code "PageUp", keyCode 33, ArrowUp
-      const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33 || key === "ArrowUp";
+      // CH+/- remote keys are distinct from ArrowUp/ArrowDown navigation.
+      const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34;
+      const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33;
       // OK / Enter detection: key "Enter", "Select", keyCode 13
       const isOk = key === "Enter" || key === "Select" || keyCode === 13;
 
       if (isChDown) {
         e.preventDefault();
-        handleRemoteChannelStep("down");
+        handleRemoteChannelTune();
         return;
       }
 
       if (isChUp) {
         e.preventDefault();
-        handleRemoteChannelStep("up");
+        handleRemoteChannelTune();
+        return;
+      }
+
+      if (key === "ArrowDown") {
+        e.preventDefault();
+        if (focusedColumn === "sidebar") {
+          setSidebarFocusIdx((prev) => (prev + 1) % 2);
+        } else {
+          handleChannelDown();
+        }
+        return;
+      }
+
+      if (key === "ArrowUp") {
+        e.preventDefault();
+        if (focusedColumn === "sidebar") {
+          setSidebarFocusIdx((prev) => (prev - 1 + 2) % 2);
+        } else {
+          handleChannelUp();
+        }
         return;
       }
 
@@ -508,7 +518,7 @@ export default function ChannelPickerPage() {
     currentChunkIndex,
     handleChannelDown,
     handleChannelUp,
-    handleRemoteChannelStep,
+    handleRemoteChannelTune,
     handleOkPress,
     handleDigitPress,
   ]);
