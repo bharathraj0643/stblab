@@ -313,14 +313,22 @@ export default function ChannelPickerPage() {
     selectedChannelIndex,
   ]);
 
-  // Physical CH+ / CH- keys tune the current selection without moving it.
-  const handleRemoteChannelTune = useCallback(() => {
-    if (currentChannels.length === 0) return;
-    const targetIndex = selectedChannelIndex ?? hoveredChannelIndex;
-    if (targetIndex >= 0 && targetIndex < currentChannels.length) {
+  // Physical CH+ / CH- keys advance the selection and tune the channel they land on.
+  const handleRemoteChannelStep = useCallback(
+    (direction: "up" | "down") => {
+      if (currentChannels.length === 0) return;
+      const currentIndex = selectedChannelIndex ?? hoveredChannelIndex;
+      const targetIndex = direction === "down"
+        ? (currentIndex + 1) % currentChannels.length
+        : (currentIndex - 1 + currentChannels.length) % currentChannels.length;
+
+      setFocusedColumn("channels");
+      setSelectedChannelIndex(targetIndex);
+      setHoveredChannelIndex(targetIndex);
       void handleTune(currentChannels[targetIndex]);
-    }
-  }, [currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune]);
+    },
+    [currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune],
+  );
 
   // Page Left (Previous Page)
   const handlePrevPage = useCallback(() => {
@@ -415,13 +423,13 @@ export default function ChannelPickerPage() {
 
       if (isChDown) {
         e.preventDefault();
-        handleRemoteChannelTune();
+        handleRemoteChannelStep("down");
         return;
       }
 
       if (isChUp) {
         e.preventDefault();
-        handleRemoteChannelTune();
+        handleRemoteChannelStep("up");
         return;
       }
 
@@ -518,7 +526,7 @@ export default function ChannelPickerPage() {
     currentChunkIndex,
     handleChannelDown,
     handleChannelUp,
-    handleRemoteChannelTune,
+    handleRemoteChannelStep,
     handleOkPress,
     handleDigitPress,
   ]);
