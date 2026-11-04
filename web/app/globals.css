@@ -604,8 +604,9 @@ html, body {
   background: #242217;
   border: 2px solid var(--focus);
   border-radius: 6px;
-  padding: 12px;
+  padding: 16px 20px;
   text-align: center;
+  min-width: 220px;
 }
 
 .dialer-label {
@@ -618,11 +619,24 @@ html, body {
 }
 
 .dialer-digits {
-  font-size: 38px;
+  font-size: clamp(52px, 7vw, 76px);
   font-family: var(--mono);
   font-weight: 700;
   color: var(--focus);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
+  line-height: 1.05;
+  min-height: 1.05em;
+}
+
+.dialer-match {
+  margin-top: 6px;
+  min-height: 1.4em;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dialer-progress {
@@ -942,9 +956,21 @@ html, body {
   }
 
   .telemetry-card,
-  .hints-card,
-  .dialer-badge {
+  .hints-card {
     display: none;
+  }
+
+  .dialer-badge {
+    padding: 10px 14px;
+    min-width: 170px;
+  }
+
+  .dialer-digits {
+    font-size: 48px;
+  }
+
+  .dialer-match {
+    font-size: 13px;
   }
 
   .sidebar-bottom {

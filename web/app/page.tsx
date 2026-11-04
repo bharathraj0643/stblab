@@ -15,6 +15,7 @@ import VirtualKeypad from "./components/VirtualKeypad";
 
 const CHANNELS_PER_PAGE = 11;
 const DIAL_TIMEOUT_MS = 3000;
+const THREE_DIGIT_TUNE_DELAY_MS = 350;
 const STATE_POLL_MS = 3000;
 
 export default function ChannelPickerPage() {
@@ -33,6 +34,7 @@ export default function ChannelPickerPage() {
 
   // Direct number dialing state (Point 5)
   const [dialBuffer, setDialBuffer] = useState<string>("");
+  const dialBufferRef = useRef("");
   const [dialProgress, setDialProgress] = useState<number>(100);
   const dialTimerRef = useRef<number | null>(null);
   const dialIntervalRef = useRef<number | null>(null);
@@ -112,6 +114,19 @@ export default function ChannelPickerPage() {
     return currentGenre?.channels || [];
   }, [currentGenre]);
 
+  const dialMatch = useMemo(() => {
+    if (!dialBuffer) return null;
+    const number = Number.parseInt(dialBuffer, 10);
+    const allChannels = genres.flatMap((genre) =>
+      (genre.channels || []).map((channel) => ({ channel, genre })),
+    );
+    return (
+      allChannels.find(({ channel }) => channel.dummyNumber === number) ||
+      allChannels.find(({ channel }) => channel.redirectNumber === number) ||
+      null
+    );
+  }, [dialBuffer, genres]);
+
   // Chunked / Paged list for viewport height (11 items per page)
   const activeChannelIdx = selectedChannelIndex ?? hoveredChannelIndex;
   const currentChunkIndex = Math.floor(activeChannelIdx / CHANNELS_PER_PAGE);
@@ -148,6 +163,7 @@ export default function ChannelPickerPage() {
       window.clearInterval(dialIntervalRef.current);
       dialIntervalRef.current = null;
     }
+    dialBufferRef.current = "";
     setDialBuffer("");
     setDialProgress(100);
   }, []);
@@ -160,7 +176,6 @@ export default function ChannelPickerPage() {
       if (!digits) return;
       const targetNum = parseInt(digits, 10);
       if (isNaN(targetNum)) {
-        clearDialer();
         return;
       }
 
@@ -192,20 +207,16 @@ export default function ChannelPickerPage() {
         }
         // Trigger main backend logic
         void handleTune(match.channel);
-      } else {
-        setTuningStatus(`Channel ${targetNum} not found`);
-        setTimeout(() => setTuningStatus(null), 2500);
       }
-
-      clearDialer();
     },
-    [genres, handleTune, clearDialer],
+    [genres, handleTune],
   );
 
   // Direct number key buffering (Point 5)
   const handleDigitPress = useCallback(
     (digit: string) => {
-      const next = (dialBuffer + digit).slice(-3); // Maximum 3 digits
+      const next = (dialBufferRef.current + digit).slice(-3); // Maximum 3 digits
+      dialBufferRef.current = next;
       setDialBuffer(next);
 
       // Reset timers
@@ -219,16 +230,20 @@ export default function ChannelPickerPage() {
         setDialProgress(remainingPct);
       }, 50);
 
-      // Trigger after 3 seconds or immediately if 3 digits are reached
+      // Leave the completed number visible briefly before tuning.
       if (next.length === 3) {
-        executeDialSearch(next);
+        dialTimerRef.current = window.setTimeout(() => {
+          executeDialSearch(next);
+          clearDialer();
+        }, THREE_DIGIT_TUNE_DELAY_MS);
       } else {
         dialTimerRef.current = window.setTimeout(() => {
           executeDialSearch(next);
+          clearDialer();
         }, DIAL_TIMEOUT_MS);
       }
     },
-    [dialBuffer, executeDialSearch],
+    [executeDialSearch, clearDialer],
   );
 
   // ----------------- REMOTE NAVIGATION (Points 1, 2) -----------------
@@ -298,6 +313,24 @@ export default function ChannelPickerPage() {
     selectedChannelIndex,
   ]);
 
+  // Physical CH+ / CH- keys move the selection and tune the channel they land on.
+  const handleRemoteChannelStep = useCallback(
+    (direction: "up" | "down") => {
+      if (focusedColumn === "sidebar" || currentChannels.length === 0) return;
+
+      const currentIndex = selectedChannelIndex ?? hoveredChannelIndex;
+      const nextIndex = direction === "down"
+        ? (currentIndex + 1) % currentChannels.length
+        : (currentIndex - 1 + currentChannels.length) % currentChannels.length;
+
+      setFocusedColumn("channels");
+      setSelectedChannelIndex(nextIndex);
+      setHoveredChannelIndex(nextIndex);
+      void handleTune(currentChannels[nextIndex]);
+    },
+    [focusedColumn, currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune],
+  );
+
   // Page Left (Previous Page)
   const handlePrevPage = useCallback(() => {
     if (totalChunks <= 1 || currentChannels.length === 0) return;
@@ -331,8 +364,9 @@ export default function ChannelPickerPage() {
   // OK button: triggers currently selected channel
   const handleOkPress = useCallback(() => {
     // If user was actively dialing digits, immediately execute search
-    if (dialBuffer.length > 0) {
-      executeDialSearch(dialBuffer);
+    if (dialBufferRef.current.length > 0) {
+      executeDialSearch(dialBufferRef.current);
+      clearDialer();
       return;
     }
 
@@ -345,6 +379,7 @@ export default function ChannelPickerPage() {
     }
   }, [
     dialBuffer,
+    clearDialer,
     executeDialSearch,
     currentChannels,
     selectedChannelIndex,
@@ -390,21 +425,13 @@ export default function ChannelPickerPage() {
 
       if (isChDown) {
         e.preventDefault();
-        if (focusedColumn === "sidebar") {
-          setSidebarFocusIdx((prev) => (prev + 1) % 2);
-        } else {
-          handleChannelDown();
-        }
+        handleRemoteChannelStep("down");
         return;
       }
 
       if (isChUp) {
         e.preventDefault();
-        if (focusedColumn === "sidebar") {
-          setSidebarFocusIdx((prev) => (prev - 1 + 2) % 2);
-        } else {
-          handleChannelUp();
-        }
+        handleRemoteChannelStep("up");
         return;
       }
 
@@ -481,6 +508,7 @@ export default function ChannelPickerPage() {
     currentChunkIndex,
     handleChannelDown,
     handleChannelUp,
+    handleRemoteChannelStep,
     handleOkPress,
     handleDigitPress,
   ]);
@@ -651,8 +679,11 @@ export default function ChannelPickerPage() {
           {dialBuffer && (
             <div className="dialer-badge">
               <div className="dialer-label">Direct Channel Dial</div>
-              <div className="dialer-digits">
-                {dialBuffer.padEnd(3, "_").split("").join(" ")}
+              <div className="dialer-digits" aria-live="assertive" aria-atomic="true">
+                {dialBuffer}
+              </div>
+              <div className="dialer-match" aria-live="polite">
+                {dialMatch ? dialMatch.channel.name : "Channel not found"}
               </div>
               <div className="dialer-progress">
                 <div
