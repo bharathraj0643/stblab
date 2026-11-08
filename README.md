@@ -14,7 +14,9 @@ credit :
   
   Note : someone should take my project and make the server and client directly on mobile itself.
   
-  [Fully Kiosk Browser](https://play.google.com/store/apps/details?id=de.ozerov.fully) : best browser for tv remote navigation for this purpose of changing channels, use this browser on Android tv
+  [Fully Kiosk Browser](https://play.google.com/store/apps/details?id=de.ozerov.fully) : best browser for tv remote navigation for this purpose of changing channels, use this browser on Android tv.
+
+  [tvQuickActions](https://play.google.com/store/apps/details?id=dev.vodik7.tvquickactions.free&pcampaignid=web_share) : use this to map advanced keycodes for Favorites button, recall previous channel button, quick launch this website from the option key button all from the physical Airtel Remote.
 </div>
 
 

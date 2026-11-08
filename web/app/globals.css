@@ -668,6 +668,26 @@ html, body {
   color: var(--text);
 }
 
+.hint-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hint-bell-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.remote-setup-hint {
+  margin-top: 6px;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /* Bottom corner edit button */
 .sidebar-bottom {
   display: flex;

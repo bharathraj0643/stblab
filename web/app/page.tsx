@@ -799,6 +799,34 @@ export default function ChannelPickerPage() {
             <div>
               <b>0–9</b>: Dial number (within 3s)
             </div>
+            <div>
+              <b className="hint-icon-label">
+                <svg
+                  aria-hidden="true"
+                  className="hint-bell-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                  <path d="M10 21h4" />
+                </svg>
+
+              </b>: Previous channel (Advanced keycode 229)
+            </div>
+            <div>
+              <b>🔵 Airtel Specials</b>: Open Favorites (Advanced keycode 177)
+            </div>
+            <div>
+              <b>Live TV</b>: Key code 170
+            </div>
+            <div className="remote-setup-hint">
+              Use TVQuickActions on the TV to map the Advanced Keycode keys. Assign Fully Kiosk
+              Browser to the Options key for quick launch from the remote.
+            </div>
           </div>
         </div>
 
