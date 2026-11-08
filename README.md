@@ -4,18 +4,18 @@
   <p>
     Control an Android TV set-top box from your laptop — a from-scratch C# implementation of the
     Android TV Remote v2 protocol, an ASP.NET Core API on top of it, and a Next.js remote in the browser.
+  </p>
 
-    credit : 
+credit : 
     - [https://github.com/Harsh3341/stblab](https://github.com/Harsh3341/stblab)
 
-    - [https://github.com/Vijayapardhu/xstream-remote](https://github.com/Vijayapardhu/xstream-remote)
+    -[https://github.com/Vijayapardhu/xstream-remote](https://github.com/Vijayapardhu/xstream-remote)
 
     Note : someone should take my project and make the server and client directly on mobile itself
-
-  </p>
+  [Fully Kiosk Browser](https://play.google.com/store/apps/details?id=de.ozerov.fully) : best browser for tv remote navigation for this purpose of changing channels, use this browser on Android tv
 </div>
 
----
+
 
 <p align="center">
   <img src="assets/picker.png" width="900">
