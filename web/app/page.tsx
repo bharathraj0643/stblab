@@ -42,6 +42,7 @@ export default function ChannelPickerPage() {
   // Tuning status
   const [tuningStatus, setTuningStatus] = useState<string | null>(null);
   const [lastTuned, setLastTuned] = useState<string | null>(null);
+  const recentChannelIdsRef = useRef<number[]>([]);
 
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
@@ -140,6 +141,10 @@ export default function ChannelPickerPage() {
   // Point 7: Main Backend Tuning Logic (only triggered on user action: OK, dial, click)
   const handleTune = useCallback(
     async (channel: Channel) => {
+      recentChannelIdsRef.current = [
+        channel.id,
+        ...recentChannelIdsRef.current.filter((id) => id !== channel.id),
+      ].slice(0, 2);
       setTuningStatus(`Tuning ${channel.name} (${channel.redirectNumber})...`);
       try {
         await tuneChannel(channel.redirectNumber, channel.name);
@@ -152,6 +157,41 @@ export default function ChannelPickerPage() {
     },
     [],
   );
+
+  const handleMediaLast = useCallback(() => {
+    const previousChannelId = recentChannelIdsRef.current[1];
+    if (previousChannelId == null) return;
+
+    const previousChannel = genres
+      .flatMap((genre) => genre.channels || [])
+      .find((channel) => channel.id === previousChannelId);
+    if (!previousChannel) return;
+
+    const genreIndex = genres.findIndex((genre) => genre.id === previousChannel.genreId);
+    if (genreIndex >= 0) {
+      const channelIndex = (genres[genreIndex].channels || []).findIndex(
+        (channel) => channel.id === previousChannel.id,
+      );
+      if (channelIndex >= 0) {
+        setSelectedGenreIndex(genreIndex);
+        setSelectedChannelIndex(channelIndex);
+        setHoveredChannelIndex(channelIndex);
+        setFocusedColumn("channels");
+      }
+    }
+
+    void handleTune(previousChannel);
+  }, [genres, handleTune]);
+
+  const handleFavoritesKey = useCallback(() => {
+    if (allFavoriteChannels.length === 0) return;
+
+    // Favorites is the first display genre whenever at least one channel is favorited.
+    setSelectedGenreIndex(0);
+    setSelectedChannelIndex(0);
+    setHoveredChannelIndex(0);
+    setFocusedColumn("channels");
+  }, [allFavoriteChannels.length]);
 
   // Clear direct dialing buffer
   const clearDialer = useCallback(() => {
@@ -415,6 +455,20 @@ export default function ChannelPickerPage() {
       const key = e.key;
       const keyCode = e.keyCode;
 
+      // Android TV remotes report the previous-channel button as MediaLast / 229.
+      if (key === "MediaLast" || keyCode === 229) {
+        e.preventDefault();
+        handleMediaLast();
+        return;
+      }
+
+      // Android TV remotes report the Favorites key as MediaTrackPrevious / 177.
+      if (key === "MediaTrackPrevious" || keyCode === 177) {
+        e.preventDefault();
+        handleFavoritesKey();
+        return;
+      }
+
       // CH+/- remote keys are distinct from ArrowUp/ArrowDown navigation.
       const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34;
       const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33;
@@ -527,6 +581,8 @@ export default function ChannelPickerPage() {
     handleChannelDown,
     handleChannelUp,
     handleRemoteChannelStep,
+    handleMediaLast,
+    handleFavoritesKey,
     handleOkPress,
     handleDigitPress,
   ]);

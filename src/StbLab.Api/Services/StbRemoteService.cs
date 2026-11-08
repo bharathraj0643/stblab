@@ -136,23 +136,15 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
             // 2. Wait 3 seconds for Live TV to open and be ready to receive input
             await Task.Delay(3000, cancellationToken);
 
-            // 3. Send redirect number as text input or sequential numeric keys
+            // 3. Send redirect digits as remote key events. IME text injection can be
+            // acknowledged without being entered by third-party keyboard services.
             string digits = request.RedirectNumber.ToString();
-            try
+            foreach (char ch in digits)
             {
-                await client.SendTextAsync(digits);
-            }
-            catch
-            {
-                // Fallback to individual numeric key codes if IME is not active
-                foreach (char ch in digits)
+                if (KeyCodes.TryResolve($"KEYCODE_{ch}", out RemoteKeyCode digitCode))
                 {
-                    if (KeyCodes.TryResolve($"NUM_{ch}", out RemoteKeyCode digitCode) ||
-                        KeyCodes.TryResolve($"{ch}", out digitCode))
-                    {
-                        await client.SendKeyAsync(digitCode);
-                        await Task.Delay(150, cancellationToken);
-                    }
+                    await client.SendKeyAsync(digitCode);
+                    await Task.Delay(150, cancellationToken);
                 }
             }
         }
