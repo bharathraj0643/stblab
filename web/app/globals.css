@@ -513,6 +513,22 @@ html, body {
   transform: translateY(1px);
 }
 
+.keypad-actions-row {
+  grid-column: span 3;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.keypad-btn.nav-action {
+  min-width: 0;
+  padding: 8px 4px;
+  background: #222c3c;
+  border-color: #3b4d68;
+  color: #c5d9ff;
+  font-size: 12px;
+}
+
 .keypad-btn-sub {
   font-size: 8px;
   color: var(--muted);
@@ -550,6 +566,17 @@ html, body {
 
 .keypad-btn.nav-ok:active {
   background: #d4bc11;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  position: relative;
+  z-index: 2;
 }
 
 .link-status {

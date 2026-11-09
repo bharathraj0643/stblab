@@ -247,7 +247,7 @@ export default function EditModal({
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Edit Channels &amp; Genres</h2>
-          <button className="close-btn" onClick={onClose} aria-label="Close">
+          <button className="close-btn" onClick={onClose} aria-label="Close" autoFocus>
             ✕
           </button>
         </div>
@@ -312,6 +312,8 @@ export default function EditModal({
               {allFavoriteChannels.length > 0 && (
                 <div
                   className={`edit-item ${activeGenreId === -1 ? "active" : ""}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setActiveGenreId(-1)}
                 >
                   <span>⭐ Favorites ({allFavoriteChannels.length})</span>
@@ -321,6 +323,9 @@ export default function EditModal({
                 <div
                   key={g.id}
                   className={`edit-item ${g.id === activeGenreId ? "active" : ""}`}
+                  role="group"
+                  tabIndex={0}
+                  aria-label={`Genre ${g.name} and actions`}
                   onClick={() => setActiveGenreId(g.id)}
                 >
                   <span>

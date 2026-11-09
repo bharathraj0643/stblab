@@ -17,6 +17,58 @@ const CHANNELS_PER_PAGE = 11;
 const DIAL_TIMEOUT_MS = 3000;
 const THREE_DIGIT_TUNE_DELAY_MS = 350;
 const STATE_POLL_MS = 3000;
+const REMOTE_FOCUSABLE_SELECTOR =
+  'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]';
+
+function getRemoteFocusableElements(): HTMLElement[] {
+  const scope = document.querySelector<HTMLElement>(".modal-card") ?? document;
+  return Array.from(scope.querySelectorAll<HTMLElement>(REMOTE_FOCUSABLE_SELECTOR)).filter(
+    (element) =>
+      element.getClientRects().length > 0 &&
+      element.getAttribute("aria-hidden") !== "true" &&
+      !element.closest('[aria-hidden="true"]'),
+  );
+}
+
+function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
+  const focusable = getRemoteFocusableElements();
+  if (focusable.length === 0) return;
+
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !focusable.includes(active)) {
+    const preferred = focusable.find((element) => element.hasAttribute("data-remote-default-focus"));
+    (preferred ?? focusable[0]).focus();
+    return;
+  }
+
+  const current = active.getBoundingClientRect();
+  const currentX = current.left + current.width / 2;
+  const currentY = current.top + current.height / 2;
+  let next: HTMLElement | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidate of focusable) {
+    if (candidate === active) continue;
+    const rect = candidate.getBoundingClientRect();
+    const dx = rect.left + rect.width / 2 - currentX;
+    const dy = rect.top + rect.height / 2 - currentY;
+    const primary = direction === "left" || direction === "right" ? Math.abs(dx) : Math.abs(dy);
+    const cross = direction === "left" || direction === "right" ? Math.abs(dy) : Math.abs(dx);
+    const isInDirection = direction === "left" ? dx < -1
+      : direction === "right" ? dx > 1
+      : direction === "up" ? dy < -1
+      : dy > 1;
+    if (!isInDirection) continue;
+
+    const score = primary + cross * 1.8 + (cross / (primary + 1)) * 8;
+    if (score < bestScore) {
+      bestScore = score;
+      next = candidate;
+    }
+  }
+
+  next?.focus();
+}
 
 export default function ChannelPickerPage() {
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -24,7 +76,6 @@ export default function ChannelPickerPage() {
 
   // Column focus: "genre" (parent), "channels" (children), or "sidebar"
   const [focusedColumn, setFocusedColumn] = useState<"genre" | "channels" | "sidebar">("channels");
-  const [sidebarFocusIdx, setSidebarFocusIdx] = useState<number>(0);
 
   // Selection & Hover states
   const [selectedGenreIndex, setSelectedGenreIndex] = useState<number>(0);
@@ -49,6 +100,14 @@ export default function ChannelPickerPage() {
 
   // Virtual Remote Keypad toggle state (collapsed by default)
   const [isKeypadOpen, setIsKeypadOpen] = useState<boolean>(false);
+
+  const focusChannelRow = useCallback((channelIndex: number) => {
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-remote-channel-index="${channelIndex}"]`)
+        ?.focus();
+    });
+  }, []);
 
   // Fetch genres from SQLite backend
   const loadGenres = useCallback(async () => {
@@ -180,11 +239,12 @@ export default function ChannelPickerPage() {
         setSelectedChannelIndex(channelIndex);
         setHoveredChannelIndex(channelIndex);
         setFocusedColumn("channels");
+        focusChannelRow(channelIndex);
       }
     }
 
     void handleTune(previousChannel);
-  }, [genres, displayGenres, handleTune]);
+  }, [genres, displayGenres, handleTune, focusChannelRow]);
 
   const handleFavoritesKey = useCallback(() => {
     if (allFavoriteChannels.length === 0) return;
@@ -194,7 +254,8 @@ export default function ChannelPickerPage() {
     setSelectedChannelIndex(0);
     setHoveredChannelIndex(0);
     setFocusedColumn("channels");
-  }, [allFavoriteChannels.length]);
+    focusChannelRow(0);
+  }, [allFavoriteChannels.length, focusChannelRow]);
 
   // Clear direct dialing buffer
   const clearDialer = useCallback(() => {
@@ -248,13 +309,14 @@ export default function ChannelPickerPage() {
           if (cIdx >= 0) {
             setSelectedChannelIndex(cIdx);
             setHoveredChannelIndex(cIdx);
+            focusChannelRow(cIdx);
           }
         }
         // Trigger main backend logic
         void handleTune(match.channel);
       }
     },
-    [genres, displayGenres, handleTune],
+    [genres, displayGenres, handleTune, focusChannelRow],
   );
 
   // Direct number key buffering (Point 5)
@@ -311,11 +373,13 @@ export default function ChannelPickerPage() {
     if (selectedChannelIndex === null) {
       setSelectedChannelIndex(0);
       setHoveredChannelIndex(0);
+      focusChannelRow(0);
     } else {
       // Cyclic selection: wrap from bottom to top
       const next = (selectedChannelIndex + 1) % currentChannels.length;
       setSelectedChannelIndex(next);
       setHoveredChannelIndex(next);
+      focusChannelRow(next);
     }
   }, [
     focusedColumn,
@@ -323,6 +387,7 @@ export default function ChannelPickerPage() {
     selectedGenreIndex,
     currentChannels.length,
     selectedChannelIndex,
+    focusChannelRow,
   ]);
 
   // Channel Up navigation
@@ -344,11 +409,13 @@ export default function ChannelPickerPage() {
       const last = currentChannels.length - 1;
       setSelectedChannelIndex(last);
       setHoveredChannelIndex(last);
+      focusChannelRow(last);
     } else {
       // Cyclic selection: wrap from top (0) to bottom
       const prev = (selectedChannelIndex - 1 + currentChannels.length) % currentChannels.length;
       setSelectedChannelIndex(prev);
       setHoveredChannelIndex(prev);
+      focusChannelRow(prev);
     }
   }, [
     focusedColumn,
@@ -356,6 +423,7 @@ export default function ChannelPickerPage() {
     selectedGenreIndex,
     currentChannels.length,
     selectedChannelIndex,
+    focusChannelRow,
   ]);
 
   // Physical CH+ / CH- keys advance the selection and tune the channel they land on.
@@ -370,9 +438,10 @@ export default function ChannelPickerPage() {
       setFocusedColumn("channels");
       setSelectedChannelIndex(targetIndex);
       setHoveredChannelIndex(targetIndex);
+      focusChannelRow(targetIndex);
       void handleTune(currentChannels[targetIndex]);
     },
-    [currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune],
+    [currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune, focusChannelRow],
   );
 
   // Page Left (Previous Page)
@@ -384,10 +453,12 @@ export default function ChannelPickerPage() {
     setFocusedColumn("channels");
     setSelectedChannelIndex(targetIdx);
     setHoveredChannelIndex(targetIdx);
+    focusChannelRow(targetIdx);
   }, [
     totalChunks,
     currentChannels.length,
     currentChunkIndex,
+    focusChannelRow,
   ]);
 
   // Page Right (Next Page)
@@ -399,10 +470,12 @@ export default function ChannelPickerPage() {
     setFocusedColumn("channels");
     setSelectedChannelIndex(targetIdx);
     setHoveredChannelIndex(targetIdx);
+    focusChannelRow(targetIdx);
   }, [
     totalChunks,
     currentChannels.length,
     currentChunkIndex,
+    focusChannelRow,
   ]);
 
   // OK button: triggers currently selected channel
@@ -421,6 +494,7 @@ export default function ChannelPickerPage() {
       setSelectedChannelIndex(targetIdx);
       setHoveredChannelIndex(targetIdx);
       setFocusedColumn("channels");
+      focusChannelRow(targetIdx);
       void handleTune(currentChannels[targetIdx]);
     }
   }, [
@@ -431,6 +505,7 @@ export default function ChannelPickerPage() {
     selectedChannelIndex,
     hoveredChannelIndex,
     handleTune,
+    focusChannelRow,
   ]);
 
   // handleToggleFavorite
@@ -449,13 +524,11 @@ export default function ChannelPickerPage() {
 
   // Global Keydown Handler (Physical Remote & Keyboard)
   useEffect(() => {
-    // Suspend remote keys while Edit UI is open
-    if (isEditOpen) return;
-
     const onKeyDown = (e: KeyboardEvent) => {
-      // Ignore if focus is in an input field
       const target = e.target as HTMLElement | null;
-      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+      const isTextInput = target?.matches("input, textarea, select, [contenteditable='true']");
+      const isDpadVertical = e.key === "ArrowUp" || e.key === "ArrowDown" || e.keyCode === 19 || e.keyCode === 20;
+      if (isTextInput && !isDpadVertical) {
         return;
       }
 
@@ -480,7 +553,7 @@ export default function ChannelPickerPage() {
       const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34;
       const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33;
       // OK / Enter detection: key "Enter", "Select", keyCode 13
-      const isOk = key === "Enter" || key === "Select" || keyCode === 13;
+      const isOk = key === "Enter" || key === "Select" || keyCode === 13 || keyCode === 23 || keyCode === 66;
 
       if (isChDown) {
         e.preventDefault();
@@ -494,63 +567,38 @@ export default function ChannelPickerPage() {
         return;
       }
 
-      if (key === "ArrowDown") {
+      if (key === "ArrowDown" || keyCode === 20 || keyCode === 40) {
         e.preventDefault();
-        if (focusedColumn === "sidebar") {
-          setSidebarFocusIdx((prev) => (prev + 1) % 2);
-        } else {
-          handleChannelDown();
-        }
+        moveRemoteFocus("down");
         return;
       }
 
-      if (key === "ArrowUp") {
+      if (key === "ArrowUp" || keyCode === 19 || keyCode === 38) {
         e.preventDefault();
-        if (focusedColumn === "sidebar") {
-          setSidebarFocusIdx((prev) => (prev - 1 + 2) % 2);
-        } else {
-          handleChannelUp();
-        }
+        moveRemoteFocus("up");
         return;
       }
 
       if (isOk) {
         e.preventDefault();
-        if (focusedColumn === "sidebar") {
-          if (sidebarFocusIdx === 0) {
-            setIsKeypadOpen((prev) => !prev);
-          } else if (sidebarFocusIdx === 1) {
-            setIsEditOpen(true);
-          }
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && getRemoteFocusableElements().includes(active)) {
+          active.click();
           return;
         }
         handleOkPress();
         return;
       }
 
-      // Left key: switch direction
-      if (key === "ArrowLeft") {
+      if (key === "ArrowLeft" || keyCode === 21 || keyCode === 37) {
         e.preventDefault();
-        if (focusedColumn === "sidebar") {
-          setFocusedColumn("channels");
-        } else {
-          setFocusedColumn("genre");
-        }
+        moveRemoteFocus("left");
         return;
       }
 
-      // Right key: switch direction to next column
-      if (key === "ArrowRight") {
+      if (key === "ArrowRight" || keyCode === 22 || keyCode === 39) {
         e.preventDefault();
-        if (focusedColumn === "genre") {
-          setFocusedColumn("channels");
-          const topIdx = currentChunkIndex * CHANNELS_PER_PAGE;
-          setSelectedChannelIndex(topIdx);
-          setHoveredChannelIndex(topIdx);
-        } else if (focusedColumn === "channels") {
-          setFocusedColumn("sidebar");
-          setSidebarFocusIdx(0);
-        }
+        moveRemoteFocus("right");
         return;
       }
 
@@ -579,14 +627,18 @@ export default function ChannelPickerPage() {
     };
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest(".genre-col")) setFocusedColumn("genre");
+      else if (target?.closest(".chan-col")) setFocusedColumn("channels");
+      else if (target?.closest(".picker-sidebar")) setFocusedColumn("sidebar");
+    };
+    window.addEventListener("focusin", onFocusIn);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("focusin", onFocusIn);
+    };
   }, [
-    isEditOpen,
-    focusedColumn,
-    sidebarFocusIdx,
-    currentChunkIndex,
-    handleChannelDown,
-    handleChannelUp,
     handleRemoteChannelStep,
     handleMediaLast,
     handleFavoritesKey,
@@ -609,13 +661,23 @@ export default function ChannelPickerPage() {
               <div
                 key={g.id}
                 className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""} ${idx === hoveredGenreIndex ? "hovered" : ""}`}
+                role="button"
+                tabIndex={0}
+                onFocus={() => {
+                  setSelectedGenreIndex(idx);
+                  setFocusedColumn("genre");
+                  setSelectedChannelIndex(0);
+                  setHoveredChannelIndex(0);
+                }}
                 onMouseEnter={() => setHoveredGenreIndex(idx)}
                 onMouseLeave={() => setHoveredGenreIndex(null)}
-                onClick={() => {
+                onClick={(event) => {
+                  event.currentTarget.focus();
                   setSelectedGenreIndex(idx);
                   setFocusedColumn("channels");
                   setSelectedChannelIndex(0);
                   setHoveredChannelIndex(0);
+                  focusChannelRow(0);
                 }}
               >
                 <span>{g.name}</span>
@@ -668,8 +730,20 @@ export default function ChannelPickerPage() {
                   <div
                     key={c.id}
                     className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
-                    onClick={() => {
+                    role="group"
+                    tabIndex={0}
+                    data-remote-channel-index={absoluteIdx}
+                    data-remote-default-focus={isSelected ? "" : undefined}
+                    aria-label={`${c.name}, channel ${c.dummyNumber}. Press OK to tune.`}
+                    onFocus={() => {
                       setSelectedChannelIndex(absoluteIdx);
+                      setHoveredChannelIndex(absoluteIdx);
+                      setFocusedColumn("channels");
+                    }}
+                    onClick={(event) => {
+                      event.currentTarget.focus();
+                      setSelectedChannelIndex(absoluteIdx);
+                      setHoveredChannelIndex(absoluteIdx);
                       setFocusedColumn("channels");
                       void handleTune(c);
                     }}
@@ -703,7 +777,7 @@ export default function ChannelPickerPage() {
               <h1>StbLab Picker</h1>
               <button
                 type="button"
-                className={`keypad-toggle-btn ${isKeypadOpen ? "active" : ""} ${focusedColumn === "sidebar" && sidebarFocusIdx === 0 ? "sidebar-focused" : ""}`}
+                className={`keypad-toggle-btn ${isKeypadOpen ? "active" : ""}`}
                 onClick={() => setIsKeypadOpen((prev) => !prev)}
                 aria-expanded={isKeypadOpen}
                 title={isKeypadOpen ? "Hide Virtual Number Pad" : "Show Virtual Number Pad"}
@@ -721,7 +795,6 @@ export default function ChannelPickerPage() {
           {/* Virtual Remote Keypad (aware of picker state) */}
           <VirtualKeypad
             isOpen={isKeypadOpen}
-            onToggle={() => setIsKeypadOpen((prev) => !prev)}
             focusedColumn={focusedColumn}
             selectedChannelIndex={selectedChannelIndex}
             hoveredChannelIndex={hoveredChannelIndex}
@@ -732,6 +805,8 @@ export default function ChannelPickerPage() {
             onChannelDown={handleChannelDown}
             onChannelUp={handleChannelUp}
             onOkPress={handleOkPress}
+            onFavoritesPress={handleFavoritesKey}
+            onRecallPress={handleMediaLast}
           />
 
           {/* Telemetry Card */}
@@ -841,7 +916,7 @@ export default function ChannelPickerPage() {
         <div className="sidebar-bottom">
           <button
             type="button"
-            className={`edit-btn ${focusedColumn === "sidebar" && sidebarFocusIdx === 1 ? "sidebar-focused" : ""}`}
+            className="edit-btn"
             onClick={() => setIsEditOpen(true)}
             aria-label="Edit Channels and Genres"
           >

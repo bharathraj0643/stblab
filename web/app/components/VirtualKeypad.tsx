@@ -5,7 +5,6 @@ import type { Channel } from "@/lib/api";
 
 interface VirtualKeypadProps {
   isOpen: boolean;
-  onToggle: () => void;
   focusedColumn: "genre" | "channels" | "sidebar";
   selectedChannelIndex: number | null;
   hoveredChannelIndex: number;
@@ -16,6 +15,8 @@ interface VirtualKeypadProps {
   onChannelDown: () => void;
   onChannelUp: () => void;
   onOkPress: () => void;
+  onFavoritesPress: () => void;
+  onRecallPress: () => void;
 }
 
 export default function VirtualKeypad({
@@ -29,6 +30,8 @@ export default function VirtualKeypad({
   onChannelDown,
   onChannelUp,
   onOkPress,
+  onFavoritesPress,
+  onRecallPress,
 }: VirtualKeypadProps) {
   if (!isOpen) return null;
 
@@ -190,6 +193,27 @@ export default function VirtualKeypad({
             {focusedColumn === "channels" && !isChannelSelected ? "Select" : "Next"}
           </span>
         </button>
+
+        <div className="keypad-actions-row">
+          <button
+            type="button"
+            className="keypad-btn nav-action"
+            onClick={onFavoritesPress}
+            aria-label="Open Favorites"
+            title="Open Favorites"
+          >
+            <span>★ Favorites</span>
+          </button>
+          <button
+            type="button"
+            className="keypad-btn nav-action"
+            onClick={onRecallPress}
+            aria-label="Recall previous channel"
+            title="Recall previous channel"
+          >
+            <span>↶ Recall</span>
+          </button>
+        </div>
 
         {/* Row 5: OK Button */}
         <button
