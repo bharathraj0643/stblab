@@ -8,7 +8,6 @@ import {
   getGenres,
   getState,
   tuneChannel,
-  toggleFavorite,
 } from "@/lib/api";
 import EditModal from "./components/EditModal";
 import VirtualKeypad from "./components/VirtualKeypad";
@@ -151,32 +150,15 @@ function moveRemoteFocus(
     const index = Number(active.dataset.remoteChannelIndex);
     if (direction === "up" || direction === "down") {
       if (!focusAdjacentItem(".channel-item", active, direction)) {
-        const nextIndex = index + (direction === "down" ? 1 : -1);
-        if (nextIndex >= 0 && nextIndex < channelCount) focusChannelIndex(nextIndex);
+        if (channelCount === 0) return;
+        const step = direction === "down" ? 1 : -1;
+        const nextIndex = (index + step + channelCount) % channelCount;
+        if (nextIndex !== index) focusChannelIndex(nextIndex);
       }
     } else if (direction === "left") {
       focusRemoteTarget(".genre-item.selected");
     } else {
-      focusRemoteTarget(`.fav-btn[data-channel-index="${index}"]`);
-    }
-    return;
-  }
-
-  if (active.matches(".fav-btn")) {
-    const index = Number(active.dataset.channelIndex);
-    if (direction === "left") {
-      focusRemoteTarget(`[data-remote-channel-index="${index}"]`);
-    } else if (direction === "right") {
       focusRemoteTarget(".keypad-toggle-btn");
-    } else {
-      const favoriteButtons = Array.from(document.querySelectorAll<HTMLElement>(".fav-btn"));
-      const rowIndex = favoriteButtons.findIndex((button) => Number(button.dataset.channelIndex) === index);
-      const targetButton = favoriteButtons[rowIndex + (direction === "down" ? 1 : -1)];
-      if (targetButton) targetButton.focus();
-      else {
-        const nextIndex = index + (direction === "down" ? 1 : -1);
-        if (nextIndex >= 0 && nextIndex < channelCount) focusChannelIndex(nextIndex);
-      }
     }
     return;
   }
@@ -680,20 +662,6 @@ export default function ChannelPickerPage() {
     focusChannelRow,
   ]);
 
-  // handleToggleFavorite
-  const handleToggleFavorite = useCallback(
-    async (channelId: number, e: React.MouseEvent) => {
-      e.stopPropagation();
-      try {
-        await toggleFavorite(channelId);
-        await loadGenres();
-      } catch (err) {
-        console.error("Failed to toggle favorite:", err);
-      }
-    },
-    [loadGenres],
-  );
-
   // Global Keydown Handler (Physical Remote & Keyboard)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -909,41 +877,30 @@ export default function ChannelPickerPage() {
                 const isHovered = selectedChannelIndex === null && hoveredChannelIndex === absoluteIdx;
 
                 return (
-                  <div className="channel-entry" key={c.id}>
-                    <div
-                      className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
-                      role="group"
-                      tabIndex={0}
-                      data-remote-channel-index={absoluteIdx}
-                      data-remote-default-focus={isSelected ? "" : undefined}
-                      aria-label={`${c.name}, channel ${c.dummyNumber}. Press OK to tune.`}
-                      onFocus={() => {
-                        setSelectedChannelIndex(absoluteIdx);
-                        setHoveredChannelIndex(absoluteIdx);
-                        setFocusedColumn("channels");
-                      }}
-                      onClick={(event) => {
-                        event.currentTarget.focus();
-                        setSelectedChannelIndex(absoluteIdx);
-                        setHoveredChannelIndex(absoluteIdx);
-                        setFocusedColumn("channels");
-                        void handleTune(c);
-                      }}
-                    >
-                      <span className="num-badge">{c.dummyNumber}</span>
-                      <span className="chan-name">{c.name}</span>
-                      <span className="redirect-hint">→ {c.redirectNumber}</span>
-                    </div>
-                    <button
-                      className={`fav-btn ${c.isFavorite ? "fav-active" : ""}`}
-                      data-channel-index={absoluteIdx}
-                      onClick={(e) => handleToggleFavorite(c.id, e)}
-                      type="button"
-                      title={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                      aria-label={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                    >
-                      {c.isFavorite ? "♥" : "♡"}
-                    </button>
+                  <div
+                    key={c.id}
+                    className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
+                    role="group"
+                    tabIndex={0}
+                    data-remote-channel-index={absoluteIdx}
+                    data-remote-default-focus={isSelected ? "" : undefined}
+                    aria-label={`${c.name}, channel ${c.dummyNumber}. Press OK to tune.`}
+                    onFocus={() => {
+                      setSelectedChannelIndex(absoluteIdx);
+                      setHoveredChannelIndex(absoluteIdx);
+                      setFocusedColumn("channels");
+                    }}
+                    onClick={(event) => {
+                      event.currentTarget.focus();
+                      setSelectedChannelIndex(absoluteIdx);
+                      setHoveredChannelIndex(absoluteIdx);
+                      setFocusedColumn("channels");
+                      void handleTune(c);
+                    }}
+                  >
+                    <span className="num-badge">{c.dummyNumber}</span>
+                    <span className="chan-name">{c.name}</span>
+                    <span className="redirect-hint">→ {c.redirectNumber}</span>
                   </div>
                 );
               })

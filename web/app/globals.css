@@ -1,8 +1,8 @@
 :root {
-  --bg: #121a26;
-  --genre-bg: #192536;
-  --chan-bg: #202d3e;
-  --sidebar-bg: #101824;
+  --bg: #0c1522;
+  --genre-bg: linear-gradient(180deg, #1a2b41 0%, #111d2d 100%);
+  --chan-bg: linear-gradient(180deg, #1c3048 0%, #111e30 100%);
+  --sidebar-bg: linear-gradient(180deg, #142237 0%, #0c1522 100%);
   --accent: #527897;
   --focus: #86a6c0;
   --selection-glass: linear-gradient(
@@ -17,7 +17,7 @@
   --border: #344154;
   --link: #4ac26b;
   --danger: #ff5252;
-  --card-bg: #172231;
+  --card-bg: linear-gradient(145deg, #1a2b40 0%, #111b2a 100%);
 
   --sans: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -33,7 +33,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg);
+  background: linear-gradient(145deg, #0a1320 0%, #14243a 48%, #0b1421 100%);
   color: var(--text);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -47,6 +47,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  background: linear-gradient(145deg, #0a1320 0%, #14243a 48%, #0b1421 100%);
 }
 
 /* Left 3/4th (75%) */
@@ -101,12 +102,12 @@ html, body {
 }
 
 .genre-col .col-header {
-  background: #183440;
+  background: linear-gradient(180deg, #263d58 0%, #18283e 100%);
   color: var(--accent);
 }
 
 .chan-col .col-header {
-  background: #293a50;
+  background: linear-gradient(180deg, #29435f 0%, #1a2e46 100%);
   color: var(--focus);
   display: flex;
   justify-content: space-between;
@@ -252,20 +253,10 @@ html, body {
   opacity: 1;
 }
 
-.channel-entry {
+.channel-item {
   flex: 1 1 0;
   min-height: 0;
   max-height: calc(100% / 11);
-  display: flex;
-  align-items: stretch;
-  gap: clamp(5px, 0.6vw, 9px);
-}
-
-.channel-item {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
   box-sizing: border-box;
   padding: 0 clamp(8px, 1.4vw, 20px);
   font-size: clamp(14px, 2vh, 21px);
@@ -424,7 +415,7 @@ html, body {
 }
 
 .keypad-toggle-btn {
-  background: #1a293a;
+  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
   border: 1px solid #52647b;
   color: var(--text);
   border-radius: 4px;
@@ -455,7 +446,7 @@ html, body {
 /* ================== VIRTUAL REMOTE KEYPAD ================== */
 
 .virtual-keypad {
-  background: #131e2b;
+  background: linear-gradient(145deg, #1a2b40 0%, #101a29 100%);
   border: 1px solid #3a4a60;
   border-radius: 8px;
   padding: 10px;
@@ -781,7 +772,7 @@ button:focus,
 
 /* Instructions card */
 .hints-card {
-  background: rgba(255, 255, 255, 0.02);
+  background: linear-gradient(145deg, rgba(28, 45, 67, 0.92), rgba(14, 23, 36, 0.96));
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 14px;
@@ -824,7 +815,7 @@ button:focus,
 }
 
 .edit-btn {
-  background: #1a293a;
+  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
   color: var(--text);
   border: 1px solid #52647b;
   border-radius: 6px;
@@ -858,7 +849,7 @@ button:focus,
 }
 
 .modal-card {
-  background: #141e2b;
+  background: linear-gradient(145deg, #17273b 0%, #101a29 100%);
   border: 1px solid #465970;
   border-radius: 8px;
   width: 90vw;
@@ -872,7 +863,7 @@ button:focus,
 
 .modal-header {
   padding: 16px 24px;
-  background: #1c2b3c;
+  background: linear-gradient(180deg, #253a53 0%, #192a40 100%);
   border-bottom: 1px solid #40536a;
   display: flex;
   justify-content: space-between;
@@ -930,7 +921,7 @@ button:focus,
 }
 
 .btn-small {
-  background: #1a293a;
+  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
   color: var(--text);
   border: 1px solid #52647b;
   border-radius: 4px;
@@ -951,7 +942,7 @@ button:focus,
 }
 
 .edit-item {
-  background: #1b2939;
+  background: linear-gradient(180deg, #1d3047 0%, #15243a 100%);
   border: 1px solid #3d5067;
   border-radius: 4px;
   padding: 10px 14px;
@@ -974,7 +965,7 @@ button:focus,
 }
 
 .icon-action-btn {
-  background: #111b28;
+  background: linear-gradient(180deg, #1c2e44 0%, #111c2b 100%);
   border: 1px solid #52647b;
   color: var(--text);
   border-radius: 3px;
@@ -987,7 +978,7 @@ button:focus,
 
 /* Edit form row */
 .form-card {
-  background: #192737;
+  background: linear-gradient(145deg, #1c2e44 0%, #121e2e 100%);
   border: 1px solid #465970;
   border-radius: 6px;
   padding: 14px;
@@ -1010,7 +1001,7 @@ button:focus,
 }
 
 .form-row input, .form-row select {
-  background: #0f1722;
+  background: linear-gradient(180deg, #101b2a 0%, #0b1420 100%);
   border: 1px solid #52647b;
   border-radius: 4px;
   padding: 8px 12px;
@@ -1042,7 +1033,7 @@ button:focus,
 }
 
 .btn-secondary {
-  background: #1a293a;
+  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
   color: var(--text);
   border: 1px solid #52647b;
   border-radius: 4px;
@@ -1151,16 +1142,6 @@ button:focus,
     font-size: 13px;
   }
 
-  .channel-entry {
-    gap: 4px;
-  }
-
-  .fav-btn {
-    flex-basis: 34px;
-    padding: 0 5px;
-    font-size: 18px;
-  }
-
   .channel-item .num-badge {
     min-width: 30px;
     font-size: 12px;
@@ -1191,36 +1172,6 @@ button:focus,
     box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.7);
   }
 }
-
-/* Favorite heart button in channel items */
-.channel-entry {
-  flex: 1 1 0;
-  min-height: 0;
-  max-height: calc(100% / 11);
-  display: flex;
-  align-items: stretch;
-  gap: clamp(5px, 0.6vw, 9px);
-}
-
-.fav-btn {
-  flex: 0 0 clamp(42px, 4vw, 58px);
-  min-height: 0;
-  height: 100%;
-  background: linear-gradient(180deg, rgba(77, 102, 132, 0.72), rgba(28, 44, 64, 0.9));
-  border: 1px solid rgba(174, 196, 218, 0.3);
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: clamp(17px, 1.8vw, 23px);
-  padding: 0 8px;
-  color: var(--dim);
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  transition: color 0.15s, transform 0.1s;
-}
-.fav-btn:hover { color: #000; background: var(--selection-glass); border-color: #b5cde0; }
-.fav-btn.fav-active { color: #e27878; }
-.fav-btn.fav-active:hover { color: #7f1717; }
 
 /* Favorite icon in edit modal */
 .fav-active-icon { color: #e44 !important; }
@@ -1274,16 +1225,4 @@ button:focus-visible {
   background: var(--selection-glass) !important;
   color: #000 !important;
   border-color: #c5d7e6 !important;
-}
-
-@media (max-width: 768px) {
-  .channel-entry {
-    gap: 4px;
-  }
-
-  .fav-btn {
-    flex-basis: 34px;
-    padding: 0 5px;
-    font-size: 18px;
-  }
 }
