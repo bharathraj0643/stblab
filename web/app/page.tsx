@@ -215,6 +215,7 @@ export default function ChannelPickerPage() {
   const [lastTuned, setLastTuned] = useState<string | null>(null);
   const recentChannelIdsRef = useRef<number[]>([]);
   const channelPositionByGenreRef = useRef<Map<number, number>>(new Map());
+  const initialChannelFocusAppliedRef = useRef(false);
 
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
@@ -294,6 +295,15 @@ export default function ChannelPickerPage() {
   const currentChannels = useMemo(() => {
     return currentGenre?.channels || [];
   }, [currentGenre]);
+
+  // Start remote navigation on the first channel row once the channel data is ready.
+  useEffect(() => {
+    if (initialChannelFocusAppliedRef.current || currentChannels.length === 0) return;
+
+    initialChannelFocusAppliedRef.current = true;
+    setFocusedColumn("channels");
+    focusChannelRow(selectedChannelIndex ?? 0);
+  }, [currentChannels, focusChannelRow, selectedChannelIndex]);
 
   // Each genre keeps its own child-list position; never carry one genre's index
   // into another genre.
