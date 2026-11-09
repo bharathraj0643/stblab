@@ -169,10 +169,10 @@ function moveRemoteFocus(
     } else if (direction === "right") {
       focusRemoteTarget(".keypad-toggle-btn");
     } else {
-      const channelRows = Array.from(document.querySelectorAll<HTMLElement>(".channel-item"));
-      const rowIndex = channelRows.findIndex((row) => Number(row.dataset.remoteChannelIndex) === index);
-      const targetRow = channelRows[rowIndex + (direction === "down" ? 1 : -1)];
-      if (targetRow) targetRow.querySelector<HTMLElement>(".fav-btn")?.focus();
+      const favoriteButtons = Array.from(document.querySelectorAll<HTMLElement>(".fav-btn"));
+      const rowIndex = favoriteButtons.findIndex((button) => Number(button.dataset.channelIndex) === index);
+      const targetButton = favoriteButtons[rowIndex + (direction === "down" ? 1 : -1)];
+      if (targetButton) targetButton.focus();
       else {
         const nextIndex = index + (direction === "down" ? 1 : -1);
         if (nextIndex >= 0 && nextIndex < channelCount) focusChannelIndex(nextIndex);
@@ -232,6 +232,7 @@ export default function ChannelPickerPage() {
   const [tuningStatus, setTuningStatus] = useState<string | null>(null);
   const [lastTuned, setLastTuned] = useState<string | null>(null);
   const recentChannelIdsRef = useRef<number[]>([]);
+  const channelPositionByGenreRef = useRef<Map<number, number>>(new Map());
 
   // Edit UI modal state (Point 6)
   const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
@@ -312,23 +313,40 @@ export default function ChannelPickerPage() {
     return currentGenre?.channels || [];
   }, [currentGenre]);
 
-  // Keep the child channel list at the same row while browsing genres. Clamp only
-  // when the newly selected genre has fewer channels than the current position.
-  const selectGenrePreservingChannelPosition = useCallback(
+  // Each genre keeps its own child-list position; never carry one genre's index
+  // into another genre.
+  const selectGenreRememberingChannelPosition = useCallback(
     (genreIndex: number) => {
-      const channelCount = displayGenres[genreIndex]?.channels?.length ?? 0;
-      const priorIndex = selectedChannelIndex ?? hoveredChannelIndex;
+      const currentGenreId = currentGenre?.id;
+      const currentPosition = selectedChannelIndex ?? hoveredChannelIndex;
+      if (currentGenreId != null && currentPosition >= 0) {
+        channelPositionByGenreRef.current.set(currentGenreId, currentPosition);
+      }
+
+      const targetGenre = displayGenres[genreIndex];
+      if (!targetGenre) return 0;
+      const savedPosition = channelPositionByGenreRef.current.get(targetGenre.id) ?? 0;
+      const channelCount = targetGenre.channels?.length ?? 0;
       const channelIndex = channelCount > 0
-        ? Math.min(priorIndex, channelCount - 1)
-        : priorIndex;
+        ? Math.min(savedPosition, channelCount - 1)
+        : savedPosition;
 
       setSelectedGenreIndex(genreIndex);
-      setSelectedChannelIndex((previous) => previous === null ? null : channelIndex);
+      setSelectedChannelIndex(channelIndex);
       setHoveredChannelIndex(channelIndex);
+      channelPositionByGenreRef.current.set(targetGenre.id, channelIndex);
       return channelIndex;
     },
-    [displayGenres, selectedChannelIndex, hoveredChannelIndex],
+    [currentGenre, displayGenres, selectedChannelIndex, hoveredChannelIndex],
   );
+
+  useEffect(() => {
+    if (!currentGenre) return;
+    const channelIndex = selectedChannelIndex ?? hoveredChannelIndex;
+    if (channelIndex >= 0) {
+      channelPositionByGenreRef.current.set(currentGenre.id, channelIndex);
+    }
+  }, [currentGenre, selectedChannelIndex, hoveredChannelIndex]);
 
   const dialMatch = useMemo(() => {
     if (!dialBuffer) return null;
@@ -517,7 +535,7 @@ export default function ChannelPickerPage() {
       // Cyclic genre navigation
       if (displayGenres.length === 0) return;
       const next = (selectedGenreIndex + 1) % displayGenres.length;
-      selectGenrePreservingChannelPosition(next);
+      selectGenreRememberingChannelPosition(next);
       return;
     }
 
@@ -542,7 +560,7 @@ export default function ChannelPickerPage() {
     currentChannels.length,
     selectedChannelIndex,
     focusChannelRow,
-    selectGenrePreservingChannelPosition,
+    selectGenreRememberingChannelPosition,
   ]);
 
   // Channel Up navigation
@@ -551,7 +569,7 @@ export default function ChannelPickerPage() {
       // Cyclic genre navigation: wrap from top to bottom
       if (displayGenres.length === 0) return;
       const prev = (selectedGenreIndex - 1 + displayGenres.length) % displayGenres.length;
-      selectGenrePreservingChannelPosition(prev);
+      selectGenreRememberingChannelPosition(prev);
       return;
     }
 
@@ -577,7 +595,7 @@ export default function ChannelPickerPage() {
     currentChannels.length,
     selectedChannelIndex,
     focusChannelRow,
-    selectGenrePreservingChannelPosition,
+    selectGenreRememberingChannelPosition,
   ]);
 
   // Physical CH+ / CH- keys advance the selection and tune the channel they land on.
@@ -828,14 +846,14 @@ export default function ChannelPickerPage() {
                 tabIndex={0}
                 data-remote-genre-index={idx}
                 onFocus={() => {
-                  selectGenrePreservingChannelPosition(idx);
+                  selectGenreRememberingChannelPosition(idx);
                   setFocusedColumn("genre");
                 }}
                 onMouseEnter={() => setHoveredGenreIndex(idx)}
                 onMouseLeave={() => setHoveredGenreIndex(null)}
                 onClick={(event) => {
                   event.currentTarget.focus();
-                  const channelIndex = selectGenrePreservingChannelPosition(idx);
+                  const channelIndex = selectGenreRememberingChannelPosition(idx);
                   setFocusedColumn("channels");
                   focusChannelRow(channelIndex);
                 }}
@@ -891,34 +909,36 @@ export default function ChannelPickerPage() {
                 const isHovered = selectedChannelIndex === null && hoveredChannelIndex === absoluteIdx;
 
                 return (
-                  <div
-                    key={c.id}
-                    className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
-                    role="group"
-                    tabIndex={0}
-                    data-remote-channel-index={absoluteIdx}
-                    data-remote-default-focus={isSelected ? "" : undefined}
-                    aria-label={`${c.name}, channel ${c.dummyNumber}. Press OK to tune.`}
-                    onFocus={() => {
-                      setSelectedChannelIndex(absoluteIdx);
-                      setHoveredChannelIndex(absoluteIdx);
-                      setFocusedColumn("channels");
-                    }}
-                    onClick={(event) => {
-                      event.currentTarget.focus();
-                      setSelectedChannelIndex(absoluteIdx);
-                      setHoveredChannelIndex(absoluteIdx);
-                      setFocusedColumn("channels");
-                      void handleTune(c);
-                    }}
-                  >
-                    <span className="num-badge">{c.dummyNumber}</span>
-                    <span className="chan-name">{c.name}</span>
-                    <span className="redirect-hint">→ {c.redirectNumber}</span>
+                  <div className="channel-entry" key={c.id}>
+                    <div
+                      className={`channel-item ${isSelected ? "selected" : ""} ${isHovered ? "hovered" : ""}`}
+                      role="group"
+                      tabIndex={0}
+                      data-remote-channel-index={absoluteIdx}
+                      data-remote-default-focus={isSelected ? "" : undefined}
+                      aria-label={`${c.name}, channel ${c.dummyNumber}. Press OK to tune.`}
+                      onFocus={() => {
+                        setSelectedChannelIndex(absoluteIdx);
+                        setHoveredChannelIndex(absoluteIdx);
+                        setFocusedColumn("channels");
+                      }}
+                      onClick={(event) => {
+                        event.currentTarget.focus();
+                        setSelectedChannelIndex(absoluteIdx);
+                        setHoveredChannelIndex(absoluteIdx);
+                        setFocusedColumn("channels");
+                        void handleTune(c);
+                      }}
+                    >
+                      <span className="num-badge">{c.dummyNumber}</span>
+                      <span className="chan-name">{c.name}</span>
+                      <span className="redirect-hint">→ {c.redirectNumber}</span>
+                    </div>
                     <button
                       className={`fav-btn ${c.isFavorite ? "fav-active" : ""}`}
                       data-channel-index={absoluteIdx}
                       onClick={(e) => handleToggleFavorite(c.id, e)}
+                      type="button"
                       title={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
                       aria-label={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
                     >

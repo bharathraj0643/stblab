@@ -1,15 +1,15 @@
 :root {
-  --bg: #111722;
-  --genre-bg: #18212e;
-  --chan-bg: #202c3c;
-  --sidebar-bg: #0d131d;
-  --accent: #078fe8;
-  --focus: #22b5ff;
+  --bg: #121a26;
+  --genre-bg: #192536;
+  --chan-bg: #202d3e;
+  --sidebar-bg: #101824;
+  --accent: #527897;
+  --focus: #86a6c0;
   --selection-glass: linear-gradient(
     180deg,
-    rgba(33, 174, 250, 0.98) 0%,
-    rgba(0, 145, 241, 0.96) 58%,
-    rgba(0, 128, 232, 0.95) 100%
+    rgba(145, 174, 198, 0.98) 0%,
+    rgba(113, 148, 177, 0.97) 58%,
+    rgba(91, 130, 162, 0.96) 100%
   );
   --text: #f5f8fc;
   --dim: #c1ccdc;
@@ -216,10 +216,10 @@ html, body {
 .genre-item:focus-visible {
   background: var(--selection-glass);
   color: #000;
-  border-color: rgba(150, 221, 255, 0.96);
-  border-left-color: #d9f4ff;
+  border-color: rgba(177, 199, 220, 0.92);
+  border-left-color: #d9e6f1;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 0 -1px 0 rgba(0, 35, 70, 0.18), 0 3px 18px rgba(0, 129, 239, 0.38);
+    inset 0 -1px 0 rgba(0, 27, 52, 0.18), 0 3px 18px rgba(52, 88, 122, 0.3);
 }
 
 .genre-item:hover .count-badge,
@@ -232,10 +232,10 @@ html, body {
 .genre-item.selected {
   background: var(--selection-glass);
   color: #000;
-  border-color: rgba(150, 221, 255, 0.96);
-  border-left-color: #d9f4ff;
+  border-color: rgba(177, 199, 220, 0.92);
+  border-left-color: #d9e6f1;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 0 -1px 0 rgba(0, 35, 70, 0.18), 0 3px 18px rgba(0, 129, 239, 0.38);
+    inset 0 -1px 0 rgba(0, 27, 52, 0.18), 0 3px 18px rgba(52, 88, 122, 0.3);
   -webkit-backdrop-filter: blur(10px) saturate(1.35);
   backdrop-filter: blur(10px) saturate(1.35);
 }
@@ -245,17 +245,27 @@ html, body {
   background: var(--selection-glass);
   color: #000;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66),
-    inset 0 -1px 0 rgba(0, 35, 70, 0.2), 0 4px 22px rgba(0, 129, 239, 0.46);
+    inset 0 -1px 0 rgba(0, 27, 52, 0.2), 0 4px 22px rgba(52, 88, 122, 0.36);
 }
 
 .genre-item.selected .count-badge {
   opacity: 1;
 }
 
-.channel-item {
+.channel-entry {
   flex: 1 1 0;
   min-height: 0;
   max-height: calc(100% / 11);
+  display: flex;
+  align-items: stretch;
+  gap: clamp(5px, 0.6vw, 9px);
+}
+
+.channel-item {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   box-sizing: border-box;
   padding: 0 clamp(8px, 1.4vw, 20px);
   font-size: clamp(14px, 2vh, 21px);
@@ -302,11 +312,11 @@ html, body {
 .channel-item:hover,
 .channel-item.hovered,
 .channel-item:focus-visible {
-  border-color: rgba(150, 221, 255, 0.96);
+  border-color: rgba(177, 199, 220, 0.92);
   background: var(--selection-glass);
   color: #000;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 0 -1px 0 rgba(0, 35, 70, 0.18), 0 3px 18px rgba(0, 129, 239, 0.38);
+    inset 0 -1px 0 rgba(0, 27, 52, 0.18), 0 3px 18px rgba(52, 88, 122, 0.3);
 }
 
 .channel-item:hover .num-badge,
@@ -320,29 +330,18 @@ html, body {
 
 .channel-item:hover .redirect-hint,
 .channel-item.hovered .redirect-hint,
+.channel-item:focus .redirect-hint,
 .channel-item:focus-visible .redirect-hint {
   background: rgba(255, 255, 255, 0.36);
 }
 
-.channel-item:hover .fav-btn,
-.channel-item.hovered .fav-btn,
-.channel-item:focus-visible .fav-btn {
-  color: #17313d;
-}
-
-.channel-item:hover .fav-btn.fav-active,
-.channel-item.hovered .fav-btn.fav-active,
-.channel-item:focus-visible .fav-btn.fav-active {
-  color: #a51d16;
-}
-
 /* Selected state (immediate selection color on channel) */
 .channel-item.selected {
-  border-color: rgba(150, 221, 255, 0.96);
+  border-color: rgba(177, 199, 220, 0.92);
   background: var(--selection-glass);
   color: #000;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 0 -1px 0 rgba(0, 35, 70, 0.18), 0 3px 18px rgba(0, 129, 239, 0.38);
+    inset 0 -1px 0 rgba(0, 27, 52, 0.18), 0 3px 18px rgba(52, 88, 122, 0.3);
   -webkit-backdrop-filter: blur(10px) saturate(1.35);
   backdrop-filter: blur(10px) saturate(1.35);
 }
@@ -351,9 +350,9 @@ html, body {
 .chan-col.focused .channel-item.selected {
   background: var(--selection-glass);
   color: #000;
-  border-color: #c6efff;
+  border-color: #d4e4f0;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68),
-    inset 0 -1px 0 rgba(0, 35, 70, 0.2), 0 5px 24px rgba(0, 129, 239, 0.48);
+    inset 0 -1px 0 rgba(0, 27, 52, 0.2), 0 5px 24px rgba(52, 88, 122, 0.38);
 }
 
 .chan-col.focused .channel-item.selected .num-badge {
@@ -372,14 +371,6 @@ html, body {
 .channel-item.selected .redirect-hint {
   color: #000;
   background: rgba(255, 255, 255, 0.36);
-}
-
-.channel-item.selected .fav-btn {
-  color: #17313d;
-}
-
-.channel-item.selected .fav-btn.fav-active {
-  color: #a51d16;
 }
 
 .empty-notice {
@@ -517,7 +508,7 @@ html, body {
 }
 
 .keypad-focus-indicator.channels {
-  background: rgba(34, 181, 255, 0.2);
+  background: rgba(134, 166, 192, 0.2);
   color: var(--focus);
 }
 
@@ -652,12 +643,12 @@ html, body {
 }
 
 .keypad-btn.nav-ok:hover {
-  background: #61c7ff;
-  box-shadow: 0 0 10px rgba(34, 181, 255, 0.45);
+  background: #9cb7cf;
+  box-shadow: 0 0 10px rgba(94, 130, 162, 0.4);
 }
 
 .keypad-btn.nav-ok:active {
-  background: #078fe8;
+  background: #527897;
 }
 
 button:focus-visible,
@@ -672,12 +663,13 @@ textarea:focus-visible,
 }
 
 button:focus-visible,
+button:focus,
 .edit-item:focus-visible {
   background: var(--selection-glass);
   color: #000;
   border-color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 4px 18px rgba(0, 129, 239, 0.42);
+    0 4px 18px rgba(52, 88, 122, 0.34);
   -webkit-backdrop-filter: blur(10px) saturate(1.35);
   backdrop-filter: blur(10px) saturate(1.35);
 }
@@ -775,7 +767,7 @@ button:focus-visible,
 
 .dialer-progress {
   height: 4px;
-  background: rgba(34, 181, 255, 0.22);
+  background: rgba(134, 166, 192, 0.22);
   border-radius: 2px;
   margin-top: 8px;
   overflow: hidden;
@@ -1159,6 +1151,16 @@ button:focus-visible,
     font-size: 13px;
   }
 
+  .channel-entry {
+    gap: 4px;
+  }
+
+  .fav-btn {
+    flex-basis: 34px;
+    padding: 0 5px;
+    font-size: 18px;
+  }
+
   .channel-item .num-badge {
     min-width: 30px;
     font-size: 12px;
@@ -1191,19 +1193,34 @@ button:focus-visible,
 }
 
 /* Favorite heart button in channel items */
+.channel-entry {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: calc(100% / 11);
+  display: flex;
+  align-items: stretch;
+  gap: clamp(5px, 0.6vw, 9px);
+}
+
 .fav-btn {
-  background: none;
-  border: none;
+  flex: 0 0 clamp(42px, 4vw, 58px);
+  min-height: 0;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(77, 102, 132, 0.72), rgba(28, 44, 64, 0.9));
+  border: 1px solid rgba(174, 196, 218, 0.3);
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
-  padding: 0 4px;
+  font-size: clamp(17px, 1.8vw, 23px);
+  padding: 0 8px;
   color: var(--dim);
   line-height: 1;
-  flex-shrink: 0;
+  display: grid;
+  place-items: center;
   transition: color 0.15s, transform 0.1s;
 }
-.fav-btn:hover { color: #e55; transform: scale(1.2); }
-.fav-btn.fav-active { color: #e44; }
+.fav-btn:hover { color: #000; background: var(--selection-glass); border-color: #b5cde0; }
+.fav-btn.fav-active { color: #e27878; }
+.fav-btn.fav-active:hover { color: #7f1717; }
 
 /* Favorite icon in edit modal */
 .fav-active-icon { color: #e44 !important; }
@@ -1212,4 +1229,61 @@ button:focus-visible,
 .sidebar-focused {
   outline: 2px solid var(--focus) !important;
   outline-offset: 2px;
+}
+
+/* Keep text dark for every highlighted genre/channel row, including TV remote focus. */
+.genre-item:hover,
+.genre-item.hovered,
+.genre-item.selected,
+.genre-item:focus,
+.channel-item:hover,
+.channel-item.hovered,
+.channel-item.selected,
+.channel-item:focus {
+  background: var(--selection-glass) !important;
+  color: #000 !important;
+}
+
+.genre-item:hover .count-badge,
+.genre-item.hovered .count-badge,
+.genre-item.selected .count-badge,
+.genre-item:focus .count-badge,
+.channel-item:hover .num-badge,
+.channel-item.hovered .num-badge,
+.channel-item.selected .num-badge,
+.channel-item:focus .num-badge,
+.channel-item:hover .chan-name,
+.channel-item.hovered .chan-name,
+.channel-item.selected .chan-name,
+.channel-item:focus .chan-name,
+.channel-item:hover .redirect-hint,
+.channel-item.hovered .redirect-hint,
+.channel-item.selected .redirect-hint,
+.channel-item:focus .redirect-hint {
+  color: #000 !important;
+  opacity: 1;
+}
+
+.edit-item:focus {
+  background: var(--selection-glass);
+  color: #000;
+}
+
+button:focus,
+button:focus-visible {
+  background: var(--selection-glass) !important;
+  color: #000 !important;
+  border-color: #c5d7e6 !important;
+}
+
+@media (max-width: 768px) {
+  .channel-entry {
+    gap: 4px;
+  }
+
+  .fav-btn {
+    flex-basis: 34px;
+    padding: 0 5px;
+    font-size: 18px;
+  }
 }
