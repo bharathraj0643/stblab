@@ -30,14 +30,13 @@ function getRemoteFocusableElements(): HTMLElement[] {
   );
 }
 
-function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
+function moveModalFocus(direction: "left" | "right" | "up" | "down"): void {
+  const modal = document.querySelector<HTMLElement>(".modal-card");
+  if (!modal) return;
   const focusable = getRemoteFocusableElements();
-  if (focusable.length === 0) return;
-
   const active = document.activeElement;
-  if (!(active instanceof HTMLElement) || !focusable.includes(active)) {
-    const preferred = focusable.find((element) => element.hasAttribute("data-remote-default-focus"));
-    (preferred ?? focusable[0]).focus();
+  if (!(active instanceof HTMLElement) || !modal.contains(active) || !focusable.includes(active)) {
+    focusable[0]?.focus();
     return;
   }
 
@@ -68,6 +67,157 @@ function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
   }
 
   next?.focus();
+}
+
+function focusRemoteTarget(selector: string): boolean {
+  const target = document.querySelector<HTMLElement>(selector);
+  if (!target || target.getClientRects().length === 0) return false;
+  target.focus();
+  return true;
+}
+
+function focusAdjacentItem(selector: string, active: HTMLElement, direction: "up" | "down"): boolean {
+  const items = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter(
+    (item) => item.getClientRects().length > 0,
+  );
+  const index = items.indexOf(active);
+  const targetIndex = index + (direction === "down" ? 1 : -1);
+  if (index < 0 || targetIndex < 0 || targetIndex >= items.length) return false;
+  items[targetIndex].focus();
+  return true;
+}
+
+function moveKeypadFocus(active: HTMLElement, direction: "left" | "right" | "up" | "down"): void {
+  const row = Number(active.dataset.padRow);
+  const column = Number(active.dataset.padCol);
+  const keypadButtons = Array.from(document.querySelectorAll<HTMLElement>(".keypad-btn[data-pad-row]"))
+    .filter((button) => button.getClientRects().length > 0);
+  const candidates = keypadButtons
+    .map((button) => ({ button, row: Number(button.dataset.padRow), column: Number(button.dataset.padCol) }))
+    .filter(({ button, row: nextRow, column: nextColumn }) => {
+      if (button === active) return false;
+      return direction === "left" ? nextColumn < column
+        : direction === "right" ? nextColumn > column
+        : direction === "up" ? nextRow < row
+        : nextRow > row;
+    })
+    .sort((a, b) => {
+      const aPrimary = direction === "left" || direction === "right" ? Math.abs(a.column - column) : Math.abs(a.row - row);
+      const bPrimary = direction === "left" || direction === "right" ? Math.abs(b.column - column) : Math.abs(b.row - row);
+      const aCross = direction === "left" || direction === "right" ? Math.abs(a.row - row) : Math.abs(a.column - column);
+      const bCross = direction === "left" || direction === "right" ? Math.abs(b.row - row) : Math.abs(b.column - column);
+      return aPrimary - bPrimary || aCross - bCross;
+    });
+
+  if (candidates[0]) {
+    candidates[0].button.focus();
+  } else if (direction === "up" && row === 0) {
+    focusRemoteTarget(".keypad-toggle-btn");
+  } else if (direction === "down" && row === 5) {
+    focusRemoteTarget(".edit-btn");
+  } else if (direction === "left" && column === 0) {
+    focusRemoteTarget(".channel-item.selected");
+  }
+}
+
+function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
+  if (document.querySelector(".modal-card")) {
+    moveModalFocus(direction);
+    return;
+  }
+
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return;
+
+  if (active.matches(".keypad-btn[data-pad-row]")) {
+    moveKeypadFocus(active, direction);
+    return;
+  }
+
+  if (active.matches(".genre-item")) {
+    if (direction === "up" || direction === "down") {
+      focusAdjacentItem(".genre-item", active, direction);
+    } else if (direction === "right") {
+      focusRemoteTarget(".channel-item.selected") || focusRemoteTarget(".channel-item");
+    }
+    return;
+  }
+
+  if (active.matches(".channel-item")) {
+    const index = Number(active.dataset.remoteChannelIndex);
+    if (direction === "up" || direction === "down") {
+      if (focusAdjacentItem(".channel-item", active, direction)) return;
+      focusRemoteTarget(direction === "up" ? ".page-nav-btn[aria-label='Previous Page']:not(:disabled)" : ".page-nav-btn[aria-label='Next Page']:not(:disabled)");
+    } else if (direction === "left") {
+      focusRemoteTarget(".genre-item.selected");
+    } else {
+      focusRemoteTarget(`.fav-btn[data-channel-index="${index}"]`);
+    }
+    return;
+  }
+
+  if (active.matches(".fav-btn")) {
+    const index = Number(active.dataset.channelIndex);
+    if (direction === "left") {
+      focusRemoteTarget(`[data-remote-channel-index="${index}"]`);
+    } else if (direction === "right") {
+      focusRemoteTarget(".keypad-toggle-btn");
+    } else {
+      const channelRows = Array.from(document.querySelectorAll<HTMLElement>(".channel-item"));
+      const rowIndex = channelRows.findIndex((row) => Number(row.dataset.remoteChannelIndex) === index);
+      const targetRow = channelRows[rowIndex + (direction === "down" ? 1 : -1)];
+      if (targetRow) targetRow.querySelector<HTMLElement>(".fav-btn")?.focus();
+      else focusRemoteTarget(direction === "up"
+        ? ".page-nav-btn[aria-label='Previous Page']:not(:disabled)"
+        : ".page-nav-btn[aria-label='Next Page']:not(:disabled)");
+    }
+    return;
+  }
+
+  if (active.matches(".page-nav-btn")) {
+    if (direction === "left" || direction === "right") {
+      const activeLabel = active.getAttribute("aria-label");
+      if (direction === "left" && activeLabel === "Next Page") {
+        focusRemoteTarget(".page-nav-btn[aria-label='Previous Page']:not(:disabled)");
+      } else if (direction === "right" && activeLabel === "Previous Page") {
+        focusRemoteTarget(".page-nav-btn[aria-label='Next Page']:not(:disabled)");
+      } else {
+        focusRemoteTarget(direction === "left" ? ".genre-item.selected" : ".channel-item.selected");
+      }
+    } else if (direction === "down") {
+      focusRemoteTarget(".channel-item.selected") || focusRemoteTarget(".channel-item");
+    } else {
+      focusRemoteTarget(".genre-item.selected");
+    }
+    return;
+  }
+
+  if (active.matches(".keypad-toggle-btn")) {
+    if (direction === "left") focusRemoteTarget(".channel-item.selected");
+    else if (direction === "down") {
+      if (!focusRemoteTarget(".keypad-btn[data-pad-row='0'][data-pad-col='0']")) {
+        focusRemoteTarget(".edit-btn");
+      }
+    }
+    return;
+  }
+
+  if (active.matches(".edit-btn")) {
+    if (direction === "up") {
+      focusRemoteTarget(".keypad-btn[data-pad-row='5']") || focusRemoteTarget(".keypad-toggle-btn");
+    } else if (direction === "left") {
+      focusRemoteTarget(".channel-item.selected");
+    }
+    return;
+  }
+
+  if (active === document.body || active === document.documentElement) {
+    focusRemoteTarget(".channel-item.selected") ||
+      focusRemoteTarget(".genre-item.selected") ||
+      focusRemoteTarget(".page-nav-btn:not(:disabled)") ||
+      focusRemoteTarget(".keypad-toggle-btn") ||
+      focusRemoteTarget(".edit-btn");
+  }
 }
 
 export default function ChannelPickerPage() {
@@ -527,7 +677,8 @@ export default function ChannelPickerPage() {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTextInput = target?.matches("input, textarea, select, [contenteditable='true']");
-      const isDpadVertical = e.key === "ArrowUp" || e.key === "ArrowDown" || e.keyCode === 19 || e.keyCode === 20;
+      const isDpadVertical = e.key === "ArrowUp" || e.key === "ArrowDown" ||
+        e.keyCode === 19 || e.keyCode === 20 || e.keyCode === 38 || e.keyCode === 40;
       if (isTextInput && !isDpadVertical) {
         return;
       }
@@ -663,6 +814,7 @@ export default function ChannelPickerPage() {
                 className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""} ${idx === hoveredGenreIndex ? "hovered" : ""}`}
                 role="button"
                 tabIndex={0}
+                data-remote-genre-index={idx}
                 onFocus={() => {
                   setSelectedGenreIndex(idx);
                   setFocusedColumn("genre");
@@ -698,6 +850,7 @@ export default function ChannelPickerPage() {
                 disabled={totalChunks <= 1}
                 aria-label="Previous Page"
                 title="Previous Page"
+                data-remote-key="page-prev"
               >
                 ◀
               </button>
@@ -711,6 +864,7 @@ export default function ChannelPickerPage() {
                 disabled={totalChunks <= 1}
                 aria-label="Next Page"
                 title="Next Page"
+                data-remote-key="page-next"
               >
                 ▶
               </button>
@@ -753,6 +907,7 @@ export default function ChannelPickerPage() {
                     <span className="redirect-hint">→ {c.redirectNumber}</span>
                     <button
                       className={`fav-btn ${c.isFavorite ? "fav-active" : ""}`}
+                      data-channel-index={absoluteIdx}
                       onClick={(e) => handleToggleFavorite(c.id, e)}
                       title={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
                       aria-label={c.isFavorite ? "Remove from favorites" : "Add to favorites"}
@@ -778,6 +933,7 @@ export default function ChannelPickerPage() {
               <button
                 type="button"
                 className={`keypad-toggle-btn ${isKeypadOpen ? "active" : ""}`}
+                data-remote-key="keypad-toggle"
                 onClick={() => setIsKeypadOpen((prev) => !prev)}
                 aria-expanded={isKeypadOpen}
                 title={isKeypadOpen ? "Hide Virtual Number Pad" : "Show Virtual Number Pad"}
@@ -870,7 +1026,10 @@ export default function ChannelPickerPage() {
           {/* Navigation Hints */}
           <div className="hints-card">
             <div>
-              <b>◀ / ▶</b>: Switch Genre / Channels
+              <b>◀ / ▶</b>: Move between guide and channel actions
+            </div>
+            <div>
+              <b>▲ / ▼</b>: Move through the focused list or keypad
             </div>
             <div>
               <b>CH ▼ / ▲</b>: Next / Prev channel
@@ -917,6 +1076,7 @@ export default function ChannelPickerPage() {
           <button
             type="button"
             className="edit-btn"
+            data-remote-key="edit"
             onClick={() => setIsEditOpen(true)}
             aria-label="Edit Channels and Genres"
           >

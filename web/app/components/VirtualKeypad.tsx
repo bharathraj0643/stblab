@@ -85,6 +85,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="0"
+          data-pad-col="0"
           onClick={() => onDigitPress("1")}
           aria-label="Digit 1"
         >
@@ -93,6 +95,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="0"
+          data-pad-col="1"
           onClick={() => onDigitPress("2")}
           aria-label="Digit 2"
         >
@@ -101,6 +105,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="0"
+          data-pad-col="2"
           onClick={() => onDigitPress("3")}
           aria-label="Digit 3"
         >
@@ -111,6 +117,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="1"
+          data-pad-col="0"
           onClick={() => onDigitPress("4")}
           aria-label="Digit 4"
         >
@@ -119,6 +127,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="1"
+          data-pad-col="1"
           onClick={() => onDigitPress("5")}
           aria-label="Digit 5"
         >
@@ -127,6 +137,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="1"
+          data-pad-col="2"
           onClick={() => onDigitPress("6")}
           aria-label="Digit 6"
         >
@@ -137,6 +149,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="2"
+          data-pad-col="0"
           onClick={() => onDigitPress("7")}
           aria-label="Digit 7"
         >
@@ -145,6 +159,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="2"
+          data-pad-col="1"
           onClick={() => onDigitPress("8")}
           aria-label="Digit 8"
         >
@@ -153,6 +169,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn"
+          data-pad-row="2"
+          data-pad-col="2"
           onClick={() => onDigitPress("9")}
           aria-label="Digit 9"
         >
@@ -163,6 +181,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn nav-ch"
+          data-pad-row="3"
+          data-pad-col="0"
           onClick={onChannelUp}
           aria-label={`Channel Up (${focusedColumn})`}
           title={`Cycle ${focusedColumn === "genre" ? "Genre" : "Channel"} Up`}
@@ -174,6 +194,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn nav-zero"
+          data-pad-row="3"
+          data-pad-col="1"
           onClick={() => onDigitPress("0")}
           aria-label="Digit 0"
           title="Digit 0"
@@ -184,6 +206,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn nav-ch"
+          data-pad-row="3"
+          data-pad-col="2"
           onClick={onChannelDown}
           aria-label={`Channel Down (${focusedColumn})`}
           title={`Cycle ${focusedColumn === "genre" ? "Genre" : "Channel"} Down`}
@@ -198,6 +222,8 @@ export default function VirtualKeypad({
           <button
             type="button"
             className="keypad-btn nav-action"
+            data-pad-row="4"
+            data-pad-col="0"
             onClick={onFavoritesPress}
             aria-label="Open Favorites"
             title="Open Favorites"
@@ -207,6 +233,8 @@ export default function VirtualKeypad({
           <button
             type="button"
             className="keypad-btn nav-action"
+            data-pad-row="4"
+            data-pad-col="1"
             onClick={onRecallPress}
             aria-label="Recall previous channel"
             title="Recall previous channel"
@@ -219,6 +247,8 @@ export default function VirtualKeypad({
         <button
           type="button"
           className="keypad-btn nav-ok"
+          data-pad-row="5"
+          data-pad-col="1"
           onClick={onOkPress}
           aria-label="OK (Tune selected channel)"
           title="Trigger TV key and tune channel on STB"
