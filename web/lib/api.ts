@@ -191,11 +191,15 @@ export function lookupChannel(number: number): Promise<Channel> {
   return request<Channel>(`/channels/lookup?number=${number}`);
 }
 
-export function tuneChannel(redirectNumber: number, channelName?: string): Promise<{ redirectNumber: number; channelName?: string }> {
+export function tuneChannel(
+  redirectNumber: number,
+  channelName?: string,
+  fastTune = false,
+): Promise<{ redirectNumber: number; channelName?: string }> {
   return request<{ redirectNumber: number; channelName?: string }>("/remote/tune", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ redirectNumber, channelName }),
+    body: JSON.stringify({ redirectNumber, channelName, fastTune }),
   });
 }
 

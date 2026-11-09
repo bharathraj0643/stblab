@@ -143,8 +143,10 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
                 // 2. Bring Live TV into foreground.
                 await client.SendKeyAsync(RemoteKeyCode.KeycodeTv);
 
-                // 3. Wait for Live TV to open and be ready to receive input.
-                await Task.Delay(3000, cancellationToken);
+                // 3. Normal tuning waits for Live TV to open. Channel-step auto-tuning
+                // has its own three-second selection debounce, so use only a short handoff
+                // grace period here instead of stacking another three-second wait.
+                await Task.Delay(request.FastTune ? 300 : 3000, cancellationToken);
 
                 // 4. Send redirect digits as remote key events. IME text injection can be
                 // acknowledged without being entered by third-party keyboard services.

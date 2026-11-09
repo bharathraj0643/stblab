@@ -10,6 +10,9 @@ public sealed class TuneRequest
     public int RedirectNumber { get; set; }
 
     public string? ChannelName { get; set; }
+
+    /// <summary>Skips the normal tuner startup wait for channel-step auto-tuning.</summary>
+    public bool FastTune { get; set; }
 }
 
 public sealed record TuneAcknowledgment(int RedirectNumber, string? ChannelName);

@@ -15,6 +15,7 @@ import VirtualKeypad from "./components/VirtualKeypad";
 const CHANNELS_PER_PAGE = 11;
 const DIAL_TIMEOUT_MS = 3000;
 const THREE_DIGIT_TUNE_DELAY_MS = 350;
+const CHANNEL_STEP_AUTO_TUNE_DELAY_MS = 3000;
 const STATE_POLL_MS = 3000;
 const REMOTE_FOCUSABLE_SELECTOR =
   'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]';
@@ -223,6 +224,13 @@ export default function ChannelPickerPage() {
   const [dialProgress, setDialProgress] = useState<number>(100);
   const dialTimerRef = useRef<number | null>(null);
   const dialIntervalRef = useRef<number | null>(null);
+  const channelStepAutoTuneTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (channelStepAutoTuneTimerRef.current !== null) {
+      window.clearTimeout(channelStepAutoTuneTimerRef.current);
+    }
+  }, []);
 
   // Tuning status
   const [tuningStatus, setTuningStatus] = useState<string | null>(null);
@@ -381,14 +389,18 @@ export default function ChannelPickerPage() {
 
   // Point 7: Main Backend Tuning Logic (only triggered on user action: OK, dial, click)
   const handleTune = useCallback(
-    async (channel: Channel) => {
+    async (channel: Channel, fastTune = false) => {
+      if (channelStepAutoTuneTimerRef.current !== null) {
+        window.clearTimeout(channelStepAutoTuneTimerRef.current);
+        channelStepAutoTuneTimerRef.current = null;
+      }
       recentChannelIdsRef.current = [
         channel.id,
         ...recentChannelIdsRef.current.filter((id) => id !== channel.id),
       ].slice(0, 2);
       setTuningStatus(`Tuning ${channel.name} (${channel.redirectNumber})...`);
       try {
-        await tuneChannel(channel.redirectNumber, channel.name);
+        await tuneChannel(channel.redirectNumber, channel.name, fastTune);
         setLastTuned(`${channel.name} [${channel.dummyNumber}]`);
         setTuningStatus(null);
       } catch (err) {
@@ -606,7 +618,7 @@ export default function ChannelPickerPage() {
     selectGenreRememberingChannelPosition,
   ]);
 
-  // Physical CH+ / CH- keys advance the selection and tune the channel they land on.
+  // Physical CH+ / CH- keys select immediately and tune after three seconds of inactivity.
   const handleRemoteChannelStep = useCallback(
     (direction: "up" | "down") => {
       if (currentChannels.length === 0) return;
@@ -619,7 +631,16 @@ export default function ChannelPickerPage() {
       setSelectedChannelIndex(targetIndex);
       setHoveredChannelIndex(targetIndex);
       focusChannelRow(targetIndex);
-      void handleTune(currentChannels[targetIndex]);
+      setTuningStatus(`Auto-tune in 3s: ${currentChannels[targetIndex].name}`);
+
+      if (channelStepAutoTuneTimerRef.current !== null) {
+        window.clearTimeout(channelStepAutoTuneTimerRef.current);
+      }
+      const targetChannel = currentChannels[targetIndex];
+      channelStepAutoTuneTimerRef.current = window.setTimeout(() => {
+        channelStepAutoTuneTimerRef.current = null;
+        void handleTune(targetChannel, true);
+      }, CHANNEL_STEP_AUTO_TUNE_DELAY_MS);
     },
     [currentChannels, selectedChannelIndex, hoveredChannelIndex, handleTune, focusChannelRow],
   );
@@ -701,6 +722,16 @@ export default function ChannelPickerPage() {
 
       const key = e.key;
       const keyCode = e.keyCode;
+      const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34;
+      const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33;
+
+      // Any other key is regular navigation/input and cancels a pending CH auto-tune.
+      if (!isChDown && !isChUp && channelStepAutoTuneTimerRef.current !== null) {
+        window.clearTimeout(channelStepAutoTuneTimerRef.current);
+        channelStepAutoTuneTimerRef.current = null;
+        setTuningStatus(null);
+      }
+
       const focusChannelAtIndex = (index: number) => {
         setSelectedChannelIndex(index);
         setHoveredChannelIndex(index);
@@ -723,8 +754,6 @@ export default function ChannelPickerPage() {
       }
 
       // CH+/- remote keys are distinct from ArrowUp/ArrowDown navigation.
-      const isChDown = key === "ChannelDown" || key === "PageDown" || keyCode === 34;
-      const isChUp = key === "ChannelUp" || key === "PageUp" || keyCode === 33;
       // OK / Enter detection: key "Enter", "Select", keyCode 13
       const isOk = key === "Enter" || key === "Select" || keyCode === 13 || keyCode === 23 || keyCode === 66;
 
