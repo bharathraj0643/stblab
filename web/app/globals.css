@@ -1400,7 +1400,7 @@ button:focus-visible {
   content: "";
   position: absolute;
   inset: 0;
-  padding: 2px;
+  padding: 4px;
   border-radius: inherit;
   background: var(--selector-ring);
   pointer-events: none;
