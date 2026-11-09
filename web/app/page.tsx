@@ -86,6 +86,20 @@ function focusAdjacentItem(selector: string, active: HTMLElement, direction: "up
   return true;
 }
 
+function sameStbState(left: StbState, right: StbState): boolean {
+  return left.connected === right.connected &&
+    left.isOn === right.isOn &&
+    left.currentApp === right.currentApp &&
+    left.volume?.level === right.volume?.level &&
+    left.volume?.max === right.volume?.max &&
+    left.volume?.muted === right.volume?.muted &&
+    left.device?.manufacturer === right.device?.manufacturer &&
+    left.device?.model === right.device?.model &&
+    left.device?.softwareVersion === right.device?.softwareVersion &&
+    left.features.length === right.features.length &&
+    left.features.every((feature, index) => feature === right.features[index]);
+}
+
 function moveKeypadFocus(active: HTMLElement, direction: "left" | "right" | "up" | "down"): void {
   const row = Number(active.dataset.padRow);
   const column = Number(active.dataset.padCol);
@@ -251,7 +265,9 @@ export default function ChannelPickerPage() {
     const poll = async () => {
       try {
         const next = await getState();
-        if (active) setStbState(next);
+        if (active) {
+          setStbState((current) => current && sameStbState(current, next) ? current : next);
+        }
       } catch {
         // silent on telemetry poll failure
       }

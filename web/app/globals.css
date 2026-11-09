@@ -1,5 +1,5 @@
 :root {
-  --bg: #080aa7;
+  --bg: #14151c;
   --genre-bg: rgba(3, 6, 31, 0.7);
   --chan-bg: rgba(3, 6, 31, 0.62);
   --sidebar-bg: rgba(2, 4, 24, 0.86);
@@ -147,7 +147,7 @@ html, body {
   justify-content: center;
   font-size: 11px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   padding: 0;
 }
 
@@ -236,8 +236,6 @@ html, body {
   border-left-color: #d9e6f1;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56),
     inset 0 -1px 0 rgba(0, 27, 52, 0.18), 0 3px 18px rgba(52, 88, 122, 0.3);
-  -webkit-backdrop-filter: blur(10px) saturate(1.35);
-  backdrop-filter: blur(10px) saturate(1.35);
 }
 
 /* When Genre column is actively focused */
@@ -269,7 +267,7 @@ html, body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   color: var(--text);
   cursor: pointer;
-  transition: all 0.08s ease-in-out;
+  transition: background-color 0.08s ease, color 0.08s ease, border-color 0.08s ease;
 }
 
 .channel-item .num-badge {
@@ -330,8 +328,6 @@ html, body {
   color: #000;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56),
     inset 0 -1px 0 rgba(0, 27, 52, 0.18), 0 3px 18px rgba(52, 88, 122, 0.3);
-  -webkit-backdrop-filter: blur(10px) saturate(1.35);
-  backdrop-filter: blur(10px) saturate(1.35);
 }
 
 /* When Channels column is actively focused */
@@ -424,7 +420,7 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   user-select: none;
 }
 
@@ -566,7 +562,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 0.1s ease;
+  transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
   user-select: none;
 }
 
@@ -658,8 +654,6 @@ button:focus,
   border-color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 4px 18px rgba(52, 88, 122, 0.34);
-  -webkit-backdrop-filter: blur(10px) saturate(1.35);
-  backdrop-filter: blur(10px) saturate(1.35);
 }
 
 .edit-item:focus-visible {
@@ -823,7 +817,7 @@ button:focus,
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .edit-btn:hover {
@@ -838,7 +832,6 @@ button:focus,
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1190,8 +1183,6 @@ button:focus,
 .channel-item:focus {
   background: var(--selection-glass) !important;
   color: #000 !important;
-  -webkit-backdrop-filter: blur(10px) saturate(1.25);
-  backdrop-filter: blur(10px) saturate(1.25);
 }
 
 .genre-item:hover .count-badge,
@@ -1230,7 +1221,7 @@ button:focus-visible {
 html,
 body,
 .picker-container {
-  background: linear-gradient(145deg, #07099b 0%, #111bd4 46%, #080b9b 100%);
+  background: var(--bg);
 }
 
 .picker-main {
@@ -1241,8 +1232,6 @@ body,
 .genre-col,
 .chan-col {
   background: rgba(2, 5, 26, 0.74);
-  -webkit-backdrop-filter: blur(12px) saturate(1.15);
-  backdrop-filter: blur(12px) saturate(1.15);
 }
 
 .genre-col .col-header,
@@ -1256,8 +1245,6 @@ body,
 .channel-item {
   background: rgba(1, 5, 26, 0.58);
   border-color: rgba(213, 230, 255, 0.5);
-  -webkit-backdrop-filter: blur(9px) saturate(1.2);
-  backdrop-filter: blur(9px) saturate(1.2);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
 }
 
@@ -1272,8 +1259,6 @@ body,
   background: var(--selection-glass) !important;
   color: #000 !important;
   border-color: rgba(202, 240, 255, 0.95);
-  -webkit-backdrop-filter: blur(10px) saturate(1.35);
-  backdrop-filter: blur(10px) saturate(1.35);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65),
     inset 0 -1px 0 rgba(0, 30, 70, 0.2), 0 4px 18px rgba(0, 96, 255, 0.3);
 }
@@ -1339,8 +1324,6 @@ body,
 .form-card {
   background: rgba(2, 5, 25, 0.78);
   border-color: rgba(214, 229, 255, 0.48);
-  -webkit-backdrop-filter: blur(12px) saturate(1.15);
-  backdrop-filter: blur(12px) saturate(1.15);
 }
 
 .keypad-status-bar,
