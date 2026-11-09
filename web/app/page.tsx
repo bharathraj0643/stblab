@@ -806,7 +806,9 @@ export default function ChannelPickerPage() {
           </h2>
 
           <div className="picker-list">
-            {displayGenres.map((g, idx) => (
+            {displayGenres.map((g, idx) => {
+              const isHighlighted = idx === selectedGenreIndex || idx === hoveredGenreIndex;
+              return (
               <div
                 key={g.id}
                 className={`genre-item ${idx === selectedGenreIndex ? "selected" : ""} ${idx === hoveredGenreIndex ? "hovered" : ""}`}
@@ -826,10 +828,13 @@ export default function ChannelPickerPage() {
                   focusChannelRow(channelIndex);
                 }}
               >
-                <span>{g.name}</span>
-                <span className="count-badge">{g.channels?.length || 0}</span>
+                <span style={{ color: isHighlighted ? "#000" : "#fff" }}>{g.name}</span>
+                <span className="count-badge" style={{ color: isHighlighted ? "#000" : "#fff" }}>
+                  {g.channels?.length || 0}
+                </span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -875,6 +880,7 @@ export default function ChannelPickerPage() {
                 const absoluteIdx = currentChunkIndex * CHANNELS_PER_PAGE + chunkIdx;
                 const isSelected = selectedChannelIndex === absoluteIdx;
                 const isHovered = selectedChannelIndex === null && hoveredChannelIndex === absoluteIdx;
+                const isHighlighted = isSelected || isHovered;
 
                 return (
                   <div
@@ -898,9 +904,15 @@ export default function ChannelPickerPage() {
                       void handleTune(c);
                     }}
                   >
-                    <span className="num-badge">{c.dummyNumber}</span>
-                    <span className="chan-name">{c.name}</span>
-                    <span className="redirect-hint">→ {c.redirectNumber}</span>
+                    <span className="num-badge" style={{ color: isHighlighted ? "#000" : "#fff" }}>
+                      {c.dummyNumber}
+                    </span>
+                    <span className="chan-name" style={{ color: isHighlighted ? "#000" : "#fff" }}>
+                      {c.name}
+                    </span>
+                    <span className="redirect-hint" style={{ color: isHighlighted ? "#000" : "#fff" }}>
+                      → {c.redirectNumber}
+                    </span>
                   </div>
                 );
               })
