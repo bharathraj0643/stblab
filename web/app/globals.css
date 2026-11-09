@@ -1371,3 +1371,17 @@ button:focus-visible {
   border-color: var(--focus);
   color: #000;
 }
+
+/* Unselected picker rows stay white; any active row switches to black text. */
+.genre-item:not(.selected):not(.hovered):not(:hover):not(:focus),
+.channel-item:not(.selected):not(.hovered):not(:hover):not(:focus) {
+  color: #fff !important;
+}
+
+.channel-item:not(.selected):not(.hovered):not(:hover):not(:focus) .num-badge,
+.channel-item:not(.selected):not(.hovered):not(:hover):not(:focus) .chan-name,
+.channel-item:not(.selected):not(.hovered):not(:hover):not(:focus) .redirect-hint,
+.genre-item:not(.selected):not(.hovered):not(:hover):not(:focus) .count-badge {
+  color: #fff !important;
+  opacity: 1;
+}
