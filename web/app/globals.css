@@ -1,17 +1,17 @@
 :root {
-  --bg: #14151c;
-  --genre-bg: #1d1e27;
-  --chan-bg: #2b2e45;
-  --sidebar-bg: #111218;
-  --accent: #ff9a1f;
-  --focus: #f7dc1c;
-  --text: #f2f2f6;
-  --dim: #9aa0b8;
-  --muted: #6b728e;
-  --border: #282a3d;
+  --bg: #111722;
+  --genre-bg: #18212e;
+  --chan-bg: #202c3c;
+  --sidebar-bg: #0d131d;
+  --accent: #39c2df;
+  --focus: #75e0f7;
+  --text: #f5f8fc;
+  --dim: #c1ccdc;
+  --muted: #a8b5c8;
+  --border: #344154;
   --link: #4ac26b;
   --danger: #ff5252;
-  --card-bg: #1a1c26;
+  --card-bg: #172231;
 
   --sans: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -49,7 +49,7 @@ html, body {
   height: 100%;
   display: grid;
   grid-template-columns: 32% 68%;
-  border-right: 2px solid #232538;
+  border-right: 2px solid var(--border);
 }
 
 /* Right 1/4th (25%) */
@@ -76,7 +76,7 @@ html, body {
 
 .genre-col {
   background: var(--genre-bg);
-  border-right: 1px solid #252737;
+  border-right: 1px solid var(--border);
 }
 
 .chan-col {
@@ -95,12 +95,12 @@ html, body {
 }
 
 .genre-col .col-header {
-  background: #342e29;
+  background: #183440;
   color: var(--accent);
 }
 
 .chan-col .col-header {
-  background: #394060;
+  background: #293a50;
   color: var(--focus);
   display: flex;
   justify-content: space-between;
@@ -128,9 +128,9 @@ html, body {
 }
 
 .page-nav-btn {
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: var(--dim);
+  background: #172536;
+  border: 1px solid #52647b;
+  color: var(--text);
   border-radius: 6px;
   width: 28px;
   height: 28px;
@@ -144,8 +144,8 @@ html, body {
 }
 
 .page-nav-btn:hover:not(:disabled) {
-  background: var(--focus);
-  color: #1a1a00;
+  background: #294358;
+  color: var(--text);
   border-color: var(--focus);
   transform: scale(1.08);
 }
@@ -202,20 +202,20 @@ html, body {
 .genre-item.hovered {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  border-left-color: rgba(247, 220, 28, 0.6);
+  border-left-color: rgba(117, 224, 247, 0.75);
 }
 
 /* Selected genre */
 .genre-item.selected {
   background: var(--accent);
-  color: #1a1000;
+  color: #071820;
   border-left-color: var(--focus);
 }
 
 /* When Genre column is actively focused */
 .genre-col.focused .genre-item.selected {
   background: var(--focus);
-  color: #1a1a00;
+  color: #071820;
   box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.25);
 }
 
@@ -254,7 +254,7 @@ html, body {
 .channel-item .redirect-hint {
   font-size: clamp(11px, 1.3vh, 14px);
   font-family: var(--mono);
-  color: #7980a4;
+  color: var(--dim);
   background: rgba(0, 0, 0, 0.25);
   padding: 1px 6px;
   border-radius: 4px;
@@ -263,7 +263,7 @@ html, body {
 /* Hovered state */
 .channel-item:hover,
 .channel-item.hovered {
-  border-color: rgba(247, 220, 28, 0.45);
+  border-color: rgba(117, 224, 247, 0.55);
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -276,17 +276,17 @@ html, body {
 /* When Channels column is actively focused */
 .chan-col.focused .channel-item.selected {
   background: var(--focus);
-  color: #1a1a00;
+  color: #071820;
   border-color: var(--focus);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
 .chan-col.focused .channel-item.selected .num-badge {
-  color: #1a1a00;
+  color: #071820;
 }
 
 .chan-col.focused .channel-item.selected .redirect-hint {
-  color: #1a1a00;
+  color: #071820;
   background: rgba(0, 0, 0, 0.15);
 }
 
@@ -341,9 +341,9 @@ html, body {
 }
 
 .keypad-toggle-btn {
-  background: #252838;
-  border: 1px solid #3d425c;
-  color: var(--dim);
+  background: #1a293a;
+  border: 1px solid #52647b;
+  color: var(--text);
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 11px;
@@ -358,22 +358,22 @@ html, body {
 }
 
 .keypad-toggle-btn:hover {
-  background: #31354a;
+  background: #294358;
   color: #fff;
   border-color: var(--focus);
 }
 
 .keypad-toggle-btn.active {
   background: var(--focus);
-  color: #1a1a00;
+  color: #071820;
   border-color: var(--focus);
 }
 
 /* ================== VIRTUAL REMOTE KEYPAD ================== */
 
 .virtual-keypad {
-  background: #181a24;
-  border: 1px solid #2e3247;
+  background: #131e2b;
+  border: 1px solid #3a4a60;
   border-radius: 8px;
   padding: 10px;
   display: flex;
@@ -420,12 +420,12 @@ html, body {
 }
 
 .keypad-focus-indicator.genre {
-  background: rgba(255, 154, 31, 0.2);
+  background: rgba(57, 194, 223, 0.18);
   color: var(--accent);
 }
 
 .keypad-focus-indicator.channels {
-  background: rgba(247, 220, 28, 0.2);
+  background: rgba(117, 224, 247, 0.18);
   color: var(--focus);
 }
 
@@ -457,7 +457,7 @@ html, body {
 }
 
 .keypad-dial-pill {
-  background: #242217;
+  background: #132a36;
   border: 1px solid var(--focus);
   color: var(--focus);
   font-size: 10px;
@@ -482,8 +482,8 @@ html, body {
 }
 
 .keypad-btn {
-  background: #222533;
-  border: 1px solid #35394e;
+  background: #1b2939;
+  border: 1px solid #44566d;
   color: var(--text);
   border-radius: 5px;
   padding: 8px 0;
@@ -500,15 +500,15 @@ html, body {
 }
 
 .keypad-btn:hover {
-  background: #2d3144;
-  border-color: #4f5573;
+  background: #294358;
+  border-color: #6e91aa;
   color: #fff;
   transform: translateY(-1px);
 }
 
 .keypad-btn:active {
   background: var(--focus);
-  color: #1a1a00;
+  color: #071820;
   border-color: var(--focus);
   transform: translateY(1px);
 }
@@ -523,36 +523,36 @@ html, body {
 .keypad-btn.nav-action {
   min-width: 0;
   padding: 8px 4px;
-  background: #222c3c;
-  border-color: #3b4d68;
-  color: #c5d9ff;
+  background: #1b3140;
+  border-color: #47728a;
+  color: #e0f7ff;
   font-size: 12px;
 }
 
 .keypad-btn-sub {
   font-size: 8px;
-  color: var(--muted);
+  color: var(--dim);
   font-weight: 400;
   margin-top: 1px;
   text-transform: uppercase;
 }
 
 .keypad-btn.nav-ch {
-  background: #1b2133;
-  border-color: #313d5e;
-  color: #8bb3ff;
+  background: #1a2b3d;
+  border-color: #45627d;
+  color: #c5e6ff;
 }
 
 .keypad-btn.nav-ch:hover {
-  background: #242d47;
-  border-color: #4a5c8c;
+  background: #294358;
+  border-color: #6e91aa;
   color: #fff;
 }
 
 .keypad-btn.nav-ok {
   grid-column: span 3;
   background: var(--focus);
-  color: #1a1a00;
+  color: #071820;
   border-color: var(--focus);
   font-size: 14px;
   font-weight: 800;
@@ -560,12 +560,12 @@ html, body {
 }
 
 .keypad-btn.nav-ok:hover {
-  background: #ffe338;
-  box-shadow: 0 0 10px rgba(247, 220, 28, 0.4);
+  background: #9aeeff;
+  box-shadow: 0 0 10px rgba(117, 224, 247, 0.4);
 }
 
 .keypad-btn.nav-ok:active {
-  background: #d4bc11;
+  background: #4fc2df;
 }
 
 button:focus-visible,
@@ -628,7 +628,7 @@ textarea:focus-visible,
 
 /* Dialer Badge */
 .dialer-badge {
-  background: #242217;
+  background: #132a36;
   border: 2px solid var(--focus);
   border-radius: 6px;
   padding: 16px 20px;
@@ -639,7 +639,7 @@ textarea:focus-visible,
 .dialer-label {
   font-size: 12px;
   font-family: var(--mono);
-  color: var(--accent);
+  color: var(--focus);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 4px;
@@ -668,7 +668,7 @@ textarea:focus-visible,
 
 .dialer-progress {
   height: 4px;
-  background: rgba(247, 220, 28, 0.2);
+  background: rgba(117, 224, 247, 0.2);
   border-radius: 2px;
   margin-top: 8px;
   overflow: hidden;
@@ -725,9 +725,9 @@ textarea:focus-visible,
 }
 
 .edit-btn {
-  background: #262939;
+  background: #1a293a;
   color: var(--text);
-  border: 1px solid #3c415c;
+  border: 1px solid #52647b;
   border-radius: 6px;
   padding: 10px 18px;
   font-size: 15px;
@@ -740,9 +740,9 @@ textarea:focus-visible,
 }
 
 .edit-btn:hover {
-  background: var(--accent);
-  color: #1a1000;
-  border-color: var(--accent);
+  background: #294358;
+  color: var(--text);
+  border-color: var(--focus);
 }
 
 /* ================== EDIT MODAL ================== */
@@ -759,8 +759,8 @@ textarea:focus-visible,
 }
 
 .modal-card {
-  background: #191b24;
-  border: 1px solid #383b4e;
+  background: #141e2b;
+  border: 1px solid #465970;
   border-radius: 8px;
   width: 90vw;
   max-width: 1020px;
@@ -773,8 +773,8 @@ textarea:focus-visible,
 
 .modal-header {
   padding: 16px 24px;
-  background: #222533;
-  border-bottom: 1px solid #34374a;
+  background: #1c2b3c;
+  border-bottom: 1px solid #40536a;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -813,7 +813,7 @@ textarea:focus-visible,
 }
 
 .modal-pane.left {
-  border-right: 1px solid #2b2e40;
+  border-right: 1px solid var(--border);
 }
 
 .pane-title-row {
@@ -827,20 +827,20 @@ textarea:focus-visible,
   font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--focus);
 }
 
 .btn-small {
-  background: #2a2e42;
+  background: #1a293a;
   color: var(--text);
-  border: 1px solid #3f4563;
+  border: 1px solid #52647b;
   border-radius: 4px;
   padding: 5px 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-.btn-small:hover { background: var(--accent); color: #1a1000; }
+.btn-small:hover { background: #294358; color: var(--text); border-color: var(--focus); }
 
 .edit-list {
   flex: 1;
@@ -852,8 +852,8 @@ textarea:focus-visible,
 }
 
 .edit-item {
-  background: #222533;
-  border: 1px solid #31354a;
+  background: #1b2939;
+  border: 1px solid #3d5067;
   border-radius: 4px;
   padding: 10px 14px;
   display: flex;
@@ -865,7 +865,7 @@ textarea:focus-visible,
 
 .edit-item.active {
   border-color: var(--focus);
-  background: #2c3044;
+  background: #243c50;
 }
 
 .item-actions {
@@ -875,21 +875,21 @@ textarea:focus-visible,
 }
 
 .icon-action-btn {
-  background: #1a1c26;
-  border: 1px solid #3b3f54;
-  color: var(--dim);
+  background: #111b28;
+  border: 1px solid #52647b;
+  color: var(--text);
   border-radius: 3px;
   padding: 4px 8px;
   cursor: pointer;
   font-size: 13px;
 }
-.icon-action-btn:hover { color: #fff; background: #32364a; }
+.icon-action-btn:hover { color: #fff; background: #294358; border-color: var(--focus); }
 .icon-action-btn.del:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
 /* Edit form row */
 .form-card {
-  background: #202330;
-  border: 1px solid #393d52;
+  background: #192737;
+  border: 1px solid #465970;
   border-radius: 6px;
   padding: 14px;
   margin-bottom: 12px;
@@ -911,8 +911,8 @@ textarea:focus-visible,
 }
 
 .form-row input, .form-row select {
-  background: #14161f;
-  border: 1px solid #3e4259;
+  background: #0f1722;
+  border: 1px solid #52647b;
   border-radius: 4px;
   padding: 8px 12px;
   color: var(--text);
@@ -934,7 +934,7 @@ textarea:focus-visible,
 
 .btn-primary {
   background: var(--focus);
-  color: #1a1a00;
+  color: #071820;
   border: none;
   border-radius: 4px;
   padding: 7px 14px;
@@ -943,9 +943,9 @@ textarea:focus-visible,
 }
 
 .btn-secondary {
-  background: #2d3042;
-  color: var(--dim);
-  border: 1px solid #444963;
+  background: #1a293a;
+  color: var(--text);
+  border: 1px solid #52647b;
   border-radius: 4px;
   padding: 7px 14px;
   cursor: pointer;
@@ -966,7 +966,7 @@ textarea:focus-visible,
     flex: 1 1 0;
     min-height: 0;
     border-right: none;
-    border-bottom: 2px solid #232538;
+    border-bottom: 2px solid var(--border);
     grid-template-columns: 36% 64%;
   }
 
@@ -980,7 +980,7 @@ textarea:focus-visible,
     justify-content: space-between;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
-    background: #0f1016;
+    background: var(--sidebar-bg);
   }
 
   .sidebar-top {

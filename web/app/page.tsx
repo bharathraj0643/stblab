@@ -120,7 +120,11 @@ function moveKeypadFocus(active: HTMLElement, direction: "left" | "right" | "up"
   }
 }
 
-function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
+function moveRemoteFocus(
+  direction: "left" | "right" | "up" | "down",
+  channelCount: number,
+  focusChannelIndex: (index: number) => void,
+): void {
   if (document.querySelector(".modal-card")) {
     moveModalFocus(direction);
     return;
@@ -146,8 +150,10 @@ function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
   if (active.matches(".channel-item")) {
     const index = Number(active.dataset.remoteChannelIndex);
     if (direction === "up" || direction === "down") {
-      if (focusAdjacentItem(".channel-item", active, direction)) return;
-      focusRemoteTarget(direction === "up" ? ".page-nav-btn[aria-label='Previous Page']:not(:disabled)" : ".page-nav-btn[aria-label='Next Page']:not(:disabled)");
+      if (!focusAdjacentItem(".channel-item", active, direction)) {
+        const nextIndex = index + (direction === "down" ? 1 : -1);
+        if (nextIndex >= 0 && nextIndex < channelCount) focusChannelIndex(nextIndex);
+      }
     } else if (direction === "left") {
       focusRemoteTarget(".genre-item.selected");
     } else {
@@ -167,27 +173,10 @@ function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
       const rowIndex = channelRows.findIndex((row) => Number(row.dataset.remoteChannelIndex) === index);
       const targetRow = channelRows[rowIndex + (direction === "down" ? 1 : -1)];
       if (targetRow) targetRow.querySelector<HTMLElement>(".fav-btn")?.focus();
-      else focusRemoteTarget(direction === "up"
-        ? ".page-nav-btn[aria-label='Previous Page']:not(:disabled)"
-        : ".page-nav-btn[aria-label='Next Page']:not(:disabled)");
-    }
-    return;
-  }
-
-  if (active.matches(".page-nav-btn")) {
-    if (direction === "left" || direction === "right") {
-      const activeLabel = active.getAttribute("aria-label");
-      if (direction === "left" && activeLabel === "Next Page") {
-        focusRemoteTarget(".page-nav-btn[aria-label='Previous Page']:not(:disabled)");
-      } else if (direction === "right" && activeLabel === "Previous Page") {
-        focusRemoteTarget(".page-nav-btn[aria-label='Next Page']:not(:disabled)");
-      } else {
-        focusRemoteTarget(direction === "left" ? ".genre-item.selected" : ".channel-item.selected");
+      else {
+        const nextIndex = index + (direction === "down" ? 1 : -1);
+        if (nextIndex >= 0 && nextIndex < channelCount) focusChannelIndex(nextIndex);
       }
-    } else if (direction === "down") {
-      focusRemoteTarget(".channel-item.selected") || focusRemoteTarget(".channel-item");
-    } else {
-      focusRemoteTarget(".genre-item.selected");
     }
     return;
   }
@@ -214,7 +203,6 @@ function moveRemoteFocus(direction: "left" | "right" | "up" | "down"): void {
   if (active === document.body || active === document.documentElement) {
     focusRemoteTarget(".channel-item.selected") ||
       focusRemoteTarget(".genre-item.selected") ||
-      focusRemoteTarget(".page-nav-btn:not(:disabled)") ||
       focusRemoteTarget(".keypad-toggle-btn") ||
       focusRemoteTarget(".edit-btn");
   }
@@ -685,6 +673,12 @@ export default function ChannelPickerPage() {
 
       const key = e.key;
       const keyCode = e.keyCode;
+      const focusChannelAtIndex = (index: number) => {
+        setSelectedChannelIndex(index);
+        setHoveredChannelIndex(index);
+        setFocusedColumn("channels");
+        focusChannelRow(index);
+      };
 
       // Android TV remotes report the previous-channel button as MediaLast / 229.
       if (key === "MediaLast" || keyCode === 229) {
@@ -720,13 +714,13 @@ export default function ChannelPickerPage() {
 
       if (key === "ArrowDown" || keyCode === 20 || keyCode === 40) {
         e.preventDefault();
-        moveRemoteFocus("down");
+        moveRemoteFocus("down", currentChannels.length, focusChannelAtIndex);
         return;
       }
 
       if (key === "ArrowUp" || keyCode === 19 || keyCode === 38) {
         e.preventDefault();
-        moveRemoteFocus("up");
+        moveRemoteFocus("up", currentChannels.length, focusChannelAtIndex);
         return;
       }
 
@@ -743,13 +737,13 @@ export default function ChannelPickerPage() {
 
       if (key === "ArrowLeft" || keyCode === 21 || keyCode === 37) {
         e.preventDefault();
-        moveRemoteFocus("left");
+        moveRemoteFocus("left", currentChannels.length, focusChannelAtIndex);
         return;
       }
 
       if (key === "ArrowRight" || keyCode === 22 || keyCode === 39) {
         e.preventDefault();
-        moveRemoteFocus("right");
+        moveRemoteFocus("right", currentChannels.length, focusChannelAtIndex);
         return;
       }
 
@@ -795,6 +789,8 @@ export default function ChannelPickerPage() {
     handleFavoritesKey,
     handleOkPress,
     handleDigitPress,
+    currentChannels.length,
+    focusChannelRow,
   ]);
 
   return (
@@ -846,6 +842,7 @@ export default function ChannelPickerPage() {
               <button
                 type="button"
                 className="page-nav-btn"
+                tabIndex={-1}
                 onClick={handlePrevPage}
                 disabled={totalChunks <= 1}
                 aria-label="Previous Page"
@@ -860,6 +857,7 @@ export default function ChannelPickerPage() {
               <button
                 type="button"
                 className="page-nav-btn"
+                tabIndex={-1}
                 onClick={handleNextPage}
                 disabled={totalChunks <= 1}
                 aria-label="Next Page"
