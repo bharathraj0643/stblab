@@ -135,13 +135,18 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
 
             try
             {
-                // 1. Send TV key to bring Live TV into foreground
+                // 1. Move through Home first so Airtel Live TV resumes its warm tuner session
+                // instead of starting at its default channel.
+                await client.SendKeyAsync(RemoteKeyCode.KeycodeHome);
+                await Task.Delay(500, cancellationToken);
+
+                // 2. Bring Live TV into foreground.
                 await client.SendKeyAsync(RemoteKeyCode.KeycodeTv);
 
-                // 2. Wait 3 seconds for Live TV to open and be ready to receive input
+                // 3. Wait for Live TV to open and be ready to receive input.
                 await Task.Delay(3000, cancellationToken);
 
-                // 3. Send redirect digits as remote key events. IME text injection can be
+                // 4. Send redirect digits as remote key events. IME text injection can be
                 // acknowledged without being entered by third-party keyboard services.
                 string digits = request.RedirectNumber.ToString();
                 foreach (char ch in digits)
