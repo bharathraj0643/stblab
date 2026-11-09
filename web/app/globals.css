@@ -1,15 +1,15 @@
 :root {
   --bg: #0c1522;
-  --genre-bg: linear-gradient(180deg, #1a2b41 0%, #111d2d 100%);
-  --chan-bg: linear-gradient(180deg, #1c3048 0%, #111e30 100%);
-  --sidebar-bg: linear-gradient(180deg, #142237 0%, #0c1522 100%);
+  --genre-bg: #172437;
+  --chan-bg: #1c2a3d;
+  --sidebar-bg: #101b2a;
   --accent: #527897;
   --focus: #86a6c0;
   --selection-glass: linear-gradient(
     180deg,
-    rgba(145, 174, 198, 0.98) 0%,
-    rgba(113, 148, 177, 0.97) 58%,
-    rgba(91, 130, 162, 0.96) 100%
+    rgba(145, 174, 198, 0.94) 0%,
+    rgba(113, 148, 177, 0.93) 58%,
+    rgba(91, 130, 162, 0.92) 100%
   );
   --text: #f5f8fc;
   --dim: #c1ccdc;
@@ -17,7 +17,7 @@
   --border: #344154;
   --link: #4ac26b;
   --danger: #ff5252;
-  --card-bg: linear-gradient(145deg, #1a2b40 0%, #111b2a 100%);
+  --card-bg: #172437;
 
   --sans: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -33,7 +33,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(145deg, #0a1320 0%, #14243a 48%, #0b1421 100%);
+  background: var(--bg);
   color: var(--text);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
@@ -47,7 +47,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(145deg, #0a1320 0%, #14243a 48%, #0b1421 100%);
+  background: var(--bg);
 }
 
 /* Left 3/4th (75%) */
@@ -102,12 +102,12 @@ html, body {
 }
 
 .genre-col .col-header {
-  background: linear-gradient(180deg, #263d58 0%, #18283e 100%);
+  background: #1a2b41;
   color: var(--accent);
 }
 
 .chan-col .col-header {
-  background: linear-gradient(180deg, #29435f 0%, #1a2e46 100%);
+  background: #20334b;
   color: var(--focus);
   display: flex;
   justify-content: space-between;
@@ -194,9 +194,7 @@ html, body {
   border: 1px solid rgba(201, 222, 248, 0.22);
   border-left: 6px solid transparent;
   border-radius: 5px;
-  background: linear-gradient(180deg, rgba(102, 124, 153, 0.24), rgba(17, 29, 47, 0.72));
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  backdrop-filter: blur(10px) saturate(1.2);
+  background: #142238;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(0, 0, 0, 0.24);
   transition: background 0.1s, color 0.1s;
@@ -266,9 +264,7 @@ html, body {
   gap: clamp(8px, 1.2vw, 16px);
   border: 1px solid rgba(201, 222, 248, 0.18);
   border-radius: 5px;
-  background: linear-gradient(180deg, rgba(102, 124, 153, 0.16), rgba(17, 29, 47, 0.36));
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  backdrop-filter: blur(10px) saturate(1.2);
+  background: #17263a;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   color: var(--text);
   cursor: pointer;
@@ -415,7 +411,7 @@ html, body {
 }
 
 .keypad-toggle-btn {
-  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
+  background: #1a293a;
   border: 1px solid #52647b;
   color: var(--text);
   border-radius: 4px;
@@ -446,7 +442,7 @@ html, body {
 /* ================== VIRTUAL REMOTE KEYPAD ================== */
 
 .virtual-keypad {
-  background: linear-gradient(145deg, #1a2b40 0%, #101a29 100%);
+  background: #131e2b;
   border: 1px solid #3a4a60;
   border-radius: 8px;
   padding: 10px;
@@ -772,7 +768,7 @@ button:focus,
 
 /* Instructions card */
 .hints-card {
-  background: linear-gradient(145deg, rgba(28, 45, 67, 0.92), rgba(14, 23, 36, 0.96));
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 14px;
@@ -815,7 +811,7 @@ button:focus,
 }
 
 .edit-btn {
-  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
+  background: #1a293a;
   color: var(--text);
   border: 1px solid #52647b;
   border-radius: 6px;
@@ -849,7 +845,7 @@ button:focus,
 }
 
 .modal-card {
-  background: linear-gradient(145deg, #17273b 0%, #101a29 100%);
+  background: #141e2b;
   border: 1px solid #465970;
   border-radius: 8px;
   width: 90vw;
@@ -863,7 +859,7 @@ button:focus,
 
 .modal-header {
   padding: 16px 24px;
-  background: linear-gradient(180deg, #253a53 0%, #192a40 100%);
+  background: #1c2b3c;
   border-bottom: 1px solid #40536a;
   display: flex;
   justify-content: space-between;
@@ -921,7 +917,7 @@ button:focus,
 }
 
 .btn-small {
-  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
+  background: #1a293a;
   color: var(--text);
   border: 1px solid #52647b;
   border-radius: 4px;
@@ -942,7 +938,7 @@ button:focus,
 }
 
 .edit-item {
-  background: linear-gradient(180deg, #1d3047 0%, #15243a 100%);
+  background: #1b2939;
   border: 1px solid #3d5067;
   border-radius: 4px;
   padding: 10px 14px;
@@ -965,7 +961,7 @@ button:focus,
 }
 
 .icon-action-btn {
-  background: linear-gradient(180deg, #1c2e44 0%, #111c2b 100%);
+  background: #111b28;
   border: 1px solid #52647b;
   color: var(--text);
   border-radius: 3px;
@@ -978,7 +974,7 @@ button:focus,
 
 /* Edit form row */
 .form-card {
-  background: linear-gradient(145deg, #1c2e44 0%, #121e2e 100%);
+  background: #192737;
   border: 1px solid #465970;
   border-radius: 6px;
   padding: 14px;
@@ -1001,7 +997,7 @@ button:focus,
 }
 
 .form-row input, .form-row select {
-  background: linear-gradient(180deg, #101b2a 0%, #0b1420 100%);
+  background: #0f1722;
   border: 1px solid #52647b;
   border-radius: 4px;
   padding: 8px 12px;
@@ -1033,7 +1029,7 @@ button:focus,
 }
 
 .btn-secondary {
-  background: linear-gradient(180deg, #263b54 0%, #17283d 100%);
+  background: #1a293a;
   color: var(--text);
   border: 1px solid #52647b;
   border-radius: 4px;
@@ -1193,6 +1189,8 @@ button:focus,
 .channel-item:focus {
   background: var(--selection-glass) !important;
   color: #000 !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  backdrop-filter: blur(10px) saturate(1.25);
 }
 
 .genre-item:hover .count-badge,
