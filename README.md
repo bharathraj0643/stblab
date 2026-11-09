@@ -115,12 +115,15 @@ dotnet run --project src/StbLab.Cli -- --host 192.168.1.50 pair
 {
   "Stb": {
     "Host": "192.168.1.128",              // <- your device (TV)
-    "CertificatePath": "../../../stb-lab-db/client_cert.pem", 
-    "PrivateKeyPath": "../../../stb-lab-db/client_key.pem"
+    "CertificatePath": "~/stb-lab/client_cert.pem",
+    "PrivateKeyPath": "~/stb-lab/client_key.pem",
   }
 }
 ```
-
+The `~/` prefix resolves to the current user's home directory on Windows, Linux, and macOS, matching
+the CLI's default pairing directory. Keep these credential files outside the repository. To use a
+different location without editing the tracked config, set the `Stb__CertificatePath` and
+`Stb__PrivateKeyPath` environment variables to the desired file paths.
 **3. Run it.**
 
 ```bash
