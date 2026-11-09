@@ -1387,24 +1387,16 @@ button:focus-visible {
   opacity: 1;
 }
 
-/* Tata Play inspired red gradient ring for the active picker selector. */
-.genre-item.selected,
-.genre-item.hovered,
-.genre-item:focus,
-.channel-item.selected,
-.channel-item.hovered,
-.channel-item:focus {
+/* Red gradient ring follows only the row under active remote navigation. */
+.genre-col.focused .genre-item:focus,
+.chan-col.focused .channel-item:focus {
   position: relative;
   z-index: 2;
   outline: none;
 }
 
-.genre-item.selected::after,
-.genre-item.hovered::after,
-.genre-item:focus::after,
-.channel-item.selected::after,
-.channel-item.hovered::after,
-.channel-item:focus::after {
+.genre-col.focused .genre-item:focus::after,
+.chan-col.focused .channel-item:focus::after {
   content: "";
   position: absolute;
   inset: 0;
