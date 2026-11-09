@@ -1,23 +1,23 @@
 :root {
-  --bg: #0c1522;
-  --genre-bg: #172437;
-  --chan-bg: #1c2a3d;
-  --sidebar-bg: #101b2a;
-  --accent: #527897;
-  --focus: #86a6c0;
+  --bg: #080aa7;
+  --genre-bg: rgba(3, 6, 31, 0.7);
+  --chan-bg: rgba(3, 6, 31, 0.62);
+  --sidebar-bg: rgba(2, 4, 24, 0.86);
+  --accent: #159feb;
+  --focus: #32b8ff;
   --selection-glass: linear-gradient(
     180deg,
-    rgba(145, 174, 198, 0.94) 0%,
-    rgba(113, 148, 177, 0.93) 58%,
-    rgba(91, 130, 162, 0.92) 100%
+    rgba(47, 194, 255, 0.98) 0%,
+    rgba(14, 165, 247, 0.97) 58%,
+    rgba(0, 137, 229, 0.96) 100%
   );
-  --text: #f5f8fc;
-  --dim: #c1ccdc;
-  --muted: #a8b5c8;
-  --border: #344154;
+  --text: #f5f7ff;
+  --dim: #d7deef;
+  --muted: #bdc9e0;
+  --border: rgba(209, 225, 255, 0.42);
   --link: #4ac26b;
   --danger: #ff5252;
-  --card-bg: #172437;
+  --card-bg: rgba(3, 6, 30, 0.72);
 
   --sans: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -1223,4 +1223,151 @@ button:focus-visible {
   background: var(--selection-glass) !important;
   color: #000 !important;
   border-color: #c5d7e6 !important;
+}
+
+/* Tata Play inspired blue screen with dark translucent glass panels. */
+html,
+body,
+.picker-container {
+  background: linear-gradient(145deg, #07099b 0%, #111bd4 46%, #080b9b 100%);
+}
+
+.picker-main {
+  border-right-color: rgba(220, 235, 255, 0.68);
+}
+
+.picker-sidebar,
+.genre-col,
+.chan-col {
+  background: rgba(2, 5, 26, 0.74);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.15);
+}
+
+.genre-col .col-header,
+.chan-col .col-header {
+  background: rgba(2, 5, 28, 0.7);
+  color: var(--text);
+  border-bottom-color: rgba(222, 236, 255, 0.55);
+}
+
+.genre-item,
+.channel-item {
+  background: rgba(1, 5, 26, 0.58);
+  border-color: rgba(213, 230, 255, 0.5);
+  -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  backdrop-filter: blur(9px) saturate(1.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+}
+
+.genre-item:hover,
+.genre-item.hovered,
+.genre-item.selected,
+.genre-item:focus,
+.channel-item:hover,
+.channel-item.hovered,
+.channel-item.selected,
+.channel-item:focus {
+  background: var(--selection-glass) !important;
+  color: #000 !important;
+  border-color: rgba(202, 240, 255, 0.95);
+  -webkit-backdrop-filter: blur(10px) saturate(1.35);
+  backdrop-filter: blur(10px) saturate(1.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(0, 30, 70, 0.2), 0 4px 18px rgba(0, 96, 255, 0.3);
+}
+
+.channel-item:hover .num-badge,
+.channel-item.hovered .num-badge,
+.channel-item.selected .num-badge,
+.channel-item:focus .num-badge,
+.channel-item:hover .chan-name,
+.channel-item.hovered .chan-name,
+.channel-item.selected .chan-name,
+.channel-item:focus .chan-name,
+.channel-item:hover .redirect-hint,
+.channel-item.hovered .redirect-hint,
+.channel-item.selected .redirect-hint,
+.channel-item:focus .redirect-hint,
+.genre-item:hover .count-badge,
+.genre-item.hovered .count-badge,
+.genre-item.selected .count-badge,
+.genre-item:focus .count-badge {
+  color: #000 !important;
+  opacity: 1;
+}
+
+.channel-item:hover .redirect-hint,
+.channel-item.hovered .redirect-hint,
+.channel-item.selected .redirect-hint,
+.channel-item:focus .redirect-hint {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.page-nav-btn,
+.keypad-toggle-btn,
+.keypad-btn:not(.nav-ok),
+.edit-btn,
+.btn-small,
+.icon-action-btn,
+.btn-secondary {
+  background: rgba(3, 7, 30, 0.72);
+  border-color: rgba(214, 229, 255, 0.58);
+  color: var(--text);
+}
+
+.page-nav-btn:hover:not(:disabled),
+.keypad-toggle-btn:hover,
+.keypad-btn:not(.nav-ok):hover,
+.edit-btn:hover,
+.btn-small:hover,
+.icon-action-btn:hover,
+.btn-secondary:hover {
+  background: rgba(24, 116, 211, 0.78);
+  border-color: rgba(211, 238, 255, 0.88);
+  color: #fff;
+}
+
+.virtual-keypad,
+.telemetry-card,
+.hints-card,
+.dialer-badge,
+.modal-card,
+.modal-header,
+.edit-item,
+.form-card {
+  background: rgba(2, 5, 25, 0.78);
+  border-color: rgba(214, 229, 255, 0.48);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.15);
+}
+
+.keypad-status-bar,
+.keypad-dial-pill,
+.edit-list .icon-action-btn,
+.form-row input,
+.form-row select {
+  background: rgba(0, 3, 20, 0.78);
+  border-color: rgba(214, 229, 255, 0.48);
+}
+
+.edit-item.active {
+  background: rgba(10, 24, 61, 0.9);
+  border-color: rgba(174, 210, 255, 0.76);
+}
+
+.edit-item:focus,
+.edit-item:focus-visible,
+button:focus,
+button:focus-visible {
+  background: var(--selection-glass) !important;
+  color: #000 !important;
+  border-color: rgba(220, 244, 255, 0.98) !important;
+}
+
+.keypad-btn.nav-ok,
+.btn-primary {
+  background: var(--focus);
+  border-color: var(--focus);
+  color: #000;
 }
