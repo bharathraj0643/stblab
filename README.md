@@ -124,6 +124,10 @@ The `~/` prefix resolves to the current user's home directory on Windows, Linux,
 the CLI's default pairing directory. Keep these credential files outside the repository. To use a
 different location without editing the tracked config, set the `Stb__CertificatePath` and
 `Stb__PrivateKeyPath` environment variables to the desired file paths.
+
+The API leaves remote text-input negotiation disabled by default, so it does not compete with
+third-party IME services such as tvQuickActions' gamepad service. Set `Stb:EnableRemoteTextInput`
+to `true` only if you need the API's text-injection endpoint; remote key control works either way.
 **3. Run it.**
 
 ```bash

@@ -227,6 +227,12 @@ public sealed class RemoteClient : IAsyncDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
 
+        if (!Features.HasFlag(RemoteFeature.Ime))
+        {
+            throw new NotSupportedException(
+                "Remote text input is disabled. Set Stb:EnableRemoteTextInput to true to enable it.");
+        }
+
         int imeCounter, fieldCounter;
         lock (_stateLock)
         {

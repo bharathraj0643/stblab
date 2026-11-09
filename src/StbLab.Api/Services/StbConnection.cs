@@ -82,7 +82,16 @@ internal sealed class StbConnection(
 
     private async Task RunSessionAsync(X509Certificate2 certificate, CancellationToken stoppingToken)
     {
-        await using RemoteClient client = new(_options.Host, certificate);
+        // tvQuickActions' gamepad service runs as an IME. Keep Android Remote v2's IME
+        // capability off by default so starting this persistent remote session does not
+        // compete with that keyboard/service. Remote key control remains enabled.
+        RemoteFeature features = RemoteFeature.Default;
+        if (!_options.EnableRemoteTextInput)
+        {
+            features &= ~RemoteFeature.Ime;
+        }
+
+        await using RemoteClient client = new(_options.Host, certificate, features);
 
         // Subscribe before connecting: the session can drop during the handshake, and a missed
         // notification would leave this loop waiting on a connection that is already gone.

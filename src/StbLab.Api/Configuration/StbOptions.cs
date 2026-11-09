@@ -17,4 +17,7 @@ public sealed class StbOptions
     public string[] AllowedOrigins { get; set; } = ["http://localhost:3000"];
 
     public int ReconnectDelaySeconds { get; set; } = 5;
+
+    /// <summary>Whether to negotiate remote text injection, which may conflict with third-party IME services.</summary>
+    public bool EnableRemoteTextInput { get; set; }
 }
