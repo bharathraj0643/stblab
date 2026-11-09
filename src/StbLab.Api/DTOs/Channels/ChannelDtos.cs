@@ -38,7 +38,7 @@ public sealed class UpdateGenreRequest
 
 public sealed class CreateChannelRequest
 {
-    [Required]
+    [Range(1, int.MaxValue)]
     public int GenreId { get; set; }
 
     [Required]
@@ -58,7 +58,7 @@ public sealed class CreateChannelRequest
 
 public sealed class UpdateChannelRequest
 {
-    [Required]
+    [Range(1, int.MaxValue)]
     public int GenreId { get; set; }
 
     [Required]

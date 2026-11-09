@@ -17,6 +17,8 @@ namespace StbLab.Api.Services;
 /// </remarks>
 internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteService
 {
+    private readonly SemaphoreSlim _tuneLock = new(1, 1);
+
     /// <summary>How many near-miss key names to suggest when a name does not resolve.</summary>
     private const int MaxSuggestions = 3;
 
@@ -74,7 +76,7 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
         {
             await client.SendKeyAsync(keyCode, direction);
         }
-        catch (Exception ex) when (ex is not StbException)
+        catch (Exception ex) when (ex is not StbException && ex is not OperationCanceledException)
         {
             // The socket died between RequireClient() and here. Surfacing it as 503 keeps the caller's
             // "try again" decision the same as for a disconnected device.
@@ -95,7 +97,7 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
         {
             await client.SendTextAsync(text);
         }
-        catch (Exception ex) when (ex is not StbException)
+        catch (Exception ex) when (ex is not StbException && ex is not OperationCanceledException)
         {
             throw new StbUnreachableException($"Could not send text: {ex.Message}", ex);
         }
@@ -114,7 +116,7 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
         {
             await client.LaunchAppAsync(app);
         }
-        catch (Exception ex) when (ex is not StbException)
+        catch (Exception ex) when (ex is not StbException && ex is not OperationCanceledException)
         {
             throw new StbUnreachableException($"Could not launch '{app}': {ex.Message}", ex);
         }
@@ -125,32 +127,40 @@ internal sealed class StbRemoteService(StbConnection connection) : IStbRemoteSer
     public async Task<TuneAcknowledgment> TuneAsync(TuneRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        RemoteClient client = connection.RequireClient();
+        await _tuneLock.WaitAsync(cancellationToken);
 
         try
         {
-            // 1. Send TV key to bring Live TV into foreground
-            await client.SendKeyAsync(RemoteKeyCode.KeycodeTv);
+            RemoteClient client = connection.RequireClient();
 
-            // 2. Wait 3 seconds for Live TV to open and be ready to receive input
-            await Task.Delay(3000, cancellationToken);
-
-            // 3. Send redirect digits as remote key events. IME text injection can be
-            // acknowledged without being entered by third-party keyboard services.
-            string digits = request.RedirectNumber.ToString();
-            foreach (char ch in digits)
+            try
             {
-                if (KeyCodes.TryResolve($"KEYCODE_{ch}", out RemoteKeyCode digitCode))
+                // 1. Send TV key to bring Live TV into foreground
+                await client.SendKeyAsync(RemoteKeyCode.KeycodeTv);
+
+                // 2. Wait 3 seconds for Live TV to open and be ready to receive input
+                await Task.Delay(3000, cancellationToken);
+
+                // 3. Send redirect digits as remote key events. IME text injection can be
+                // acknowledged without being entered by third-party keyboard services.
+                string digits = request.RedirectNumber.ToString();
+                foreach (char ch in digits)
                 {
-                    await client.SendKeyAsync(digitCode);
-                    await Task.Delay(150, cancellationToken);
+                    if (KeyCodes.TryResolve($"KEYCODE_{ch}", out RemoteKeyCode digitCode))
+                    {
+                        await client.SendKeyAsync(digitCode);
+                        await Task.Delay(150, cancellationToken);
+                    }
                 }
             }
+            catch (Exception ex) when (ex is not StbException && ex is not OperationCanceledException)
+            {
+                throw new StbUnreachableException($"Could not tune channel {request.RedirectNumber}: {ex.Message}", ex);
+            }
         }
-        catch (Exception ex) when (ex is not StbException)
+        finally
         {
-            throw new StbUnreachableException($"Could not tune channel {request.RedirectNumber}: {ex.Message}", ex);
+            _tuneLock.Release();
         }
 
         return new TuneAcknowledgment(request.RedirectNumber, request.ChannelName);

@@ -16,6 +16,11 @@ public sealed class ChannelsController(ChannelRepository repo) : ControllerBase
     [ProducesResponseType(typeof(ChannelDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<ChannelDto>> CreateChannel(CreateChannelRequest request, CancellationToken ct)
     {
+        if (await repo.GetGenreByIdAsync(request.GenreId, ct) is null)
+        {
+            return BadRequest($"Genre {request.GenreId} does not exist.");
+        }
+
         var channel = await repo.CreateChannelAsync(
             request.GenreId, request.Name, request.DummyNumber, request.RedirectNumber, request.SortOrder, ct);
         return StatusCode(StatusCodes.Status201Created, MapChannel(channel));
@@ -26,6 +31,11 @@ public sealed class ChannelsController(ChannelRepository repo) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ChannelDto>> UpdateChannel(int id, UpdateChannelRequest request, CancellationToken ct)
     {
+        if (await repo.GetGenreByIdAsync(request.GenreId, ct) is null)
+        {
+            return BadRequest($"Genre {request.GenreId} does not exist.");
+        }
+
         var updated = await repo.UpdateChannelAsync(
             id, request.GenreId, request.Name, request.DummyNumber, request.RedirectNumber, request.SortOrder, ct);
         if (updated is null) return NotFound();

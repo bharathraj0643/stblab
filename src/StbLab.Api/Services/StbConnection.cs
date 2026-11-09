@@ -92,12 +92,12 @@ internal sealed class StbConnection(
         try
         {
             await client.ConnectAsync(cancellationToken: stoppingToken);
-            _client = client;
             logger.LogInformation("Connected to the TV at {Host}.", _options.Host);
 
             // Don't announce the session as usable until the device has pushed its initial state, so
             // the first request after a reconnect doesn't read a half-populated snapshot.
             await client.WaitForInitialStateAsync(TimeSpan.FromSeconds(5), stoppingToken);
+            _client = client;
             await lost.Task.WaitAsync(stoppingToken);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

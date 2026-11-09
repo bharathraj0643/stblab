@@ -17,7 +17,7 @@ public static class DbInitializer
         return Path.Combine(labDir, "channels.db");
     }
 
-    public static string GetConnectionString() => $"Data Source={GetDatabasePath()}";
+    public static string GetConnectionString() => $"Data Source={GetDatabasePath()};Foreign Keys=True";
 
     public static void Initialize()
     {
@@ -53,26 +53,9 @@ public static class DbInitializer
             """;
         command.ExecuteNonQuery();
 
-        // Migration: add favorite columns if missing
-        using SqliteCommand migCmd = connection.CreateCommand();
-        migCmd.CommandText = """
-            SELECT COUNT(*) FROM pragma_table_info('channels') WHERE name='is_favorite';
-            """;
-        long hasFav = (long)(migCmd.ExecuteScalar() ?? 0L);
-        if (hasFav == 0)
-        {
-            using SqliteCommand addFav = connection.CreateCommand();
-            addFav.CommandText = """
-                ALTER TABLE channels ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;
-                """;
-            addFav.ExecuteNonQuery();
-
-            using SqliteCommand addFavOrder = connection.CreateCommand();
-            addFavOrder.CommandText = """
-                ALTER TABLE channels ADD COLUMN favorite_order INTEGER NOT NULL DEFAULT 0;
-                """;
-            addFavOrder.ExecuteNonQuery();
-        }
+        // Migrate each column independently so a partially applied earlier migration can recover.
+        EnsureChannelColumn(connection, "is_favorite", "INTEGER NOT NULL DEFAULT 0");
+        EnsureChannelColumn(connection, "favorite_order", "INTEGER NOT NULL DEFAULT 0");
 
         // Seed default channels if genres table is empty
         using SqliteCommand countCmd = connection.CreateCommand();
@@ -83,6 +66,18 @@ public static class DbInitializer
         {
             SeedDefaults(connection);
         }
+    }
+
+    private static void EnsureChannelColumn(SqliteConnection connection, string name, string definition)
+    {
+        using SqliteCommand check = connection.CreateCommand();
+        check.CommandText = "SELECT COUNT(*) FROM pragma_table_info('channels') WHERE name = $name;";
+        check.Parameters.AddWithValue("$name", name);
+        if (Convert.ToInt64(check.ExecuteScalar()) != 0) return;
+
+        using SqliteCommand add = connection.CreateCommand();
+        add.CommandText = $"ALTER TABLE channels ADD COLUMN {name} {definition};";
+        add.ExecuteNonQuery();
     }
 
     private static void SeedDefaults(SqliteConnection connection)
