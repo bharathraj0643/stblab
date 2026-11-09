@@ -5,6 +5,7 @@
   --sidebar-bg: rgba(2, 4, 24, 0.86);
   --accent: #159feb;
   --focus: #32b8ff;
+  --selector-ring: linear-gradient(135deg, #ff7777 0%, #ed1b36 48%, #a90024 100%);
   --selection-glass: linear-gradient(
     180deg,
     rgba(47, 194, 255, 0.98) 0%,
@@ -1384,4 +1385,34 @@ button:focus-visible {
 .genre-item:not(.selected):not(.hovered):not(:hover):not(:focus) .count-badge {
   color: #fff !important;
   opacity: 1;
+}
+
+/* Tata Play inspired red gradient ring for the active picker selector. */
+.genre-item.selected,
+.genre-item.hovered,
+.genre-item:focus,
+.channel-item.selected,
+.channel-item.hovered,
+.channel-item:focus {
+  position: relative;
+  z-index: 2;
+  outline: none;
+}
+
+.genre-item.selected::after,
+.genre-item.hovered::after,
+.genre-item:focus::after,
+.channel-item.selected::after,
+.channel-item.hovered::after,
+.channel-item:focus::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: var(--selector-ring);
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
