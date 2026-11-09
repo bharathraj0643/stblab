@@ -167,13 +167,16 @@ export default function ChannelPickerPage() {
       .find((channel) => channel.id === previousChannelId);
     if (!previousChannel) return;
 
-    const genreIndex = genres.findIndex((genre) => genre.id === previousChannel.genreId);
-    if (genreIndex >= 0) {
-      const channelIndex = (genres[genreIndex].channels || []).findIndex(
+    const displayGenreIndex = displayGenres.findIndex(
+      (genre) => genre.id === previousChannel.genreId,
+    );
+    const channelGenre = genres.find((genre) => genre.id === previousChannel.genreId);
+    if (displayGenreIndex >= 0 && channelGenre) {
+      const channelIndex = (channelGenre.channels || []).findIndex(
         (channel) => channel.id === previousChannel.id,
       );
       if (channelIndex >= 0) {
-        setSelectedGenreIndex(genreIndex);
+        setSelectedGenreIndex(displayGenreIndex);
         setSelectedChannelIndex(channelIndex);
         setHoveredChannelIndex(channelIndex);
         setFocusedColumn("channels");
@@ -181,7 +184,7 @@ export default function ChannelPickerPage() {
     }
 
     void handleTune(previousChannel);
-  }, [genres, handleTune]);
+  }, [genres, displayGenres, handleTune]);
 
   const handleFavoritesKey = useCallback(() => {
     if (allFavoriteChannels.length === 0) return;
@@ -416,6 +419,8 @@ export default function ChannelPickerPage() {
     const targetIdx = selectedChannelIndex ?? hoveredChannelIndex;
     if (targetIdx >= 0 && targetIdx < currentChannels.length) {
       setSelectedChannelIndex(targetIdx);
+      setHoveredChannelIndex(targetIdx);
+      setFocusedColumn("channels");
       void handleTune(currentChannels[targetIdx]);
     }
   }, [
