@@ -6,10 +6,10 @@
   --accent: #078fe8;
   --focus: #22b5ff;
   --selection-glass: linear-gradient(
-    90deg,
-    rgba(19, 165, 249, 0.98) 0%,
-    rgba(0, 133, 239, 0.96) 58%,
-    rgba(0, 111, 221, 0.94) 100%
+    180deg,
+    rgba(33, 174, 250, 0.98) 0%,
+    rgba(0, 145, 241, 0.96) 58%,
+    rgba(0, 128, 232, 0.95) 100%
   );
   --text: #f5f8fc;
   --dim: #c1ccdc;

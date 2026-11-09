@@ -312,6 +312,24 @@ export default function ChannelPickerPage() {
     return currentGenre?.channels || [];
   }, [currentGenre]);
 
+  // Keep the child channel list at the same row while browsing genres. Clamp only
+  // when the newly selected genre has fewer channels than the current position.
+  const selectGenrePreservingChannelPosition = useCallback(
+    (genreIndex: number) => {
+      const channelCount = displayGenres[genreIndex]?.channels?.length ?? 0;
+      const priorIndex = selectedChannelIndex ?? hoveredChannelIndex;
+      const channelIndex = channelCount > 0
+        ? Math.min(priorIndex, channelCount - 1)
+        : priorIndex;
+
+      setSelectedGenreIndex(genreIndex);
+      setSelectedChannelIndex((previous) => previous === null ? null : channelIndex);
+      setHoveredChannelIndex(channelIndex);
+      return channelIndex;
+    },
+    [displayGenres, selectedChannelIndex, hoveredChannelIndex],
+  );
+
   const dialMatch = useMemo(() => {
     if (!dialBuffer) return null;
     const number = Number.parseInt(dialBuffer, 10);
@@ -499,9 +517,7 @@ export default function ChannelPickerPage() {
       // Cyclic genre navigation
       if (displayGenres.length === 0) return;
       const next = (selectedGenreIndex + 1) % displayGenres.length;
-      setSelectedGenreIndex(next);
-      setHoveredChannelIndex(0);
-      setSelectedChannelIndex(0); // selection selects top channel column (not trigger)
+      selectGenrePreservingChannelPosition(next);
       return;
     }
 
@@ -526,6 +542,7 @@ export default function ChannelPickerPage() {
     currentChannels.length,
     selectedChannelIndex,
     focusChannelRow,
+    selectGenrePreservingChannelPosition,
   ]);
 
   // Channel Up navigation
@@ -534,9 +551,7 @@ export default function ChannelPickerPage() {
       // Cyclic genre navigation: wrap from top to bottom
       if (displayGenres.length === 0) return;
       const prev = (selectedGenreIndex - 1 + displayGenres.length) % displayGenres.length;
-      setSelectedGenreIndex(prev);
-      setHoveredChannelIndex(0);
-      setSelectedChannelIndex(0); // selection selects top channel column (not trigger)
+      selectGenrePreservingChannelPosition(prev);
       return;
     }
 
@@ -562,6 +577,7 @@ export default function ChannelPickerPage() {
     currentChannels.length,
     selectedChannelIndex,
     focusChannelRow,
+    selectGenrePreservingChannelPosition,
   ]);
 
   // Physical CH+ / CH- keys advance the selection and tune the channel they land on.
@@ -812,20 +828,16 @@ export default function ChannelPickerPage() {
                 tabIndex={0}
                 data-remote-genre-index={idx}
                 onFocus={() => {
-                  setSelectedGenreIndex(idx);
+                  selectGenrePreservingChannelPosition(idx);
                   setFocusedColumn("genre");
-                  setSelectedChannelIndex(0);
-                  setHoveredChannelIndex(0);
                 }}
                 onMouseEnter={() => setHoveredGenreIndex(idx)}
                 onMouseLeave={() => setHoveredGenreIndex(null)}
                 onClick={(event) => {
                   event.currentTarget.focus();
-                  setSelectedGenreIndex(idx);
+                  const channelIndex = selectGenrePreservingChannelPosition(idx);
                   setFocusedColumn("channels");
-                  setSelectedChannelIndex(0);
-                  setHoveredChannelIndex(0);
-                  focusChannelRow(0);
+                  focusChannelRow(channelIndex);
                 }}
               >
                 <span>{g.name}</span>
