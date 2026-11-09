@@ -234,10 +234,12 @@ export default function ChannelPickerPage() {
 
       if (match) {
         // Switch to this channel's genre & channel
-        const gIdx = genres.findIndex((g) => g.id === match.genre.id);
-        if (gIdx >= 0) {
-          setSelectedGenreIndex(gIdx);
-          const cIdx = (genres[gIdx].channels || []).findIndex(
+        const displayGenreIndex = displayGenres.findIndex((g) => g.id === match.genre.id);
+        const channelGenre = genres.find((g) => g.id === match.genre.id);
+        if (displayGenreIndex >= 0 && channelGenre) {
+          setSelectedGenreIndex(displayGenreIndex);
+          setFocusedColumn("channels");
+          const cIdx = (channelGenre.channels || []).findIndex(
             (c) => c.id === match.channel.id,
           );
           if (cIdx >= 0) {
@@ -249,7 +251,7 @@ export default function ChannelPickerPage() {
         void handleTune(match.channel);
       }
     },
-    [genres, handleTune],
+    [genres, displayGenres, handleTune],
   );
 
   // Direct number key buffering (Point 5)
