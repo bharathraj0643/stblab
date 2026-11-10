@@ -85,6 +85,12 @@ public sealed class ReorderChannelsRequest
     public List<int> ChannelIds { get; set; } = [];
 }
 
+public sealed class ReorderGenresRequest
+{
+    [Required]
+    public List<int> GenreIds { get; set; } = [];
+}
+
 public sealed class ReorderFavoritesRequest
 {
     [Required]

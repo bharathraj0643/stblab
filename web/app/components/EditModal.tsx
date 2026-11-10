@@ -7,6 +7,7 @@ import {
   createGenre,
   updateGenre,
   deleteGenre,
+  reorderGenres,
   createChannel,
   updateChannel,
   deleteChannel,
@@ -116,6 +117,26 @@ export default function EditModal({
         const remaining = genres.filter((g) => g.id !== id);
         setActiveGenreId(remaining.length > 0 ? remaining[0].id : null);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMoveGenre = async (index: number, direction: "up" | "down") => {
+    const reordered = [...genres];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= reordered.length) return;
+
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    setLoading(true);
+    setError(null);
+    try {
+      await reorderGenres(reordered.map((genre) => genre.id));
+      await onRefresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -319,7 +340,7 @@ export default function EditModal({
                   <span>⭐ Favorites ({allFavoriteChannels.length})</span>
                 </div>
               )}
-              {genres.map((g) => (
+              {genres.map((g, i) => (
                 <div
                   key={g.id}
                   className={`edit-item ${g.id === activeGenreId ? "active" : ""}`}
@@ -333,6 +354,24 @@ export default function EditModal({
                     {g.name} ({g.channels?.length || 0})
                   </span>
                   <div className="item-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="icon-action-btn"
+                      title="Move genre up"
+                      aria-label={`Move ${g.name} up`}
+                      disabled={i === 0 || loading}
+                      onClick={() => handleMoveGenre(i, "up")}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      className="icon-action-btn"
+                      title="Move genre down"
+                      aria-label={`Move ${g.name} down`}
+                      disabled={i === genres.length - 1 || loading}
+                      onClick={() => handleMoveGenre(i, "down")}
+                    >
+                      ▼
+                    </button>
                     <button
                       className="icon-action-btn"
                       title="Edit genre"

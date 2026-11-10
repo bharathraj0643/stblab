@@ -48,6 +48,14 @@ public sealed class GenresController(ChannelRepository repo) : ControllerBase
         return Ok(MapGenre(updated));
     }
 
+    [HttpPut("reorder")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ReorderGenres(ReorderGenresRequest request, CancellationToken ct)
+    {
+        await repo.ReorderGenresAsync(request.GenreIds, ct);
+        return NoContent();
+    }
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

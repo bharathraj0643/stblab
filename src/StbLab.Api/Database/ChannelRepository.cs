@@ -130,6 +130,25 @@ public sealed class ChannelRepository
         return rows > 0 ? await GetGenreByIdAsync(id, ct) : null;
     }
 
+    public async Task ReorderGenresAsync(IReadOnlyList<int> genreIds, CancellationToken ct = default)
+    {
+        await using SqliteConnection connection = new(_connectionString);
+        await connection.OpenAsync(ct);
+        await using SqliteTransaction tx = (SqliteTransaction)await connection.BeginTransactionAsync(ct);
+
+        for (int i = 0; i < genreIds.Count; i++)
+        {
+            await using SqliteCommand cmd = connection.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "UPDATE genres SET sort_order = $order, updated_at = CURRENT_TIMESTAMP WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$order", i + 1);
+            cmd.Parameters.AddWithValue("$id", genreIds[i]);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+    }
+
     public async Task<bool> DeleteGenreAsync(int id, CancellationToken ct = default)
     {
         await using SqliteConnection connection = new(_connectionString);

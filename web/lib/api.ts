@@ -142,6 +142,14 @@ export function deleteGenre(id: number): Promise<void> {
   });
 }
 
+export function reorderGenres(genreIds: number[]): Promise<void> {
+  return request<void>("/genres/reorder", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ genreIds }),
+  });
+}
+
 export function createChannel(data: {
   genreId: number;
   name: string;
