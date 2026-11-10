@@ -381,15 +381,23 @@ export default function ChannelPickerPage() {
   const dialMatch = useMemo(() => {
     if (!dialBuffer) return null;
     const number = Number.parseInt(dialBuffer, 10);
-    const allChannels = genres.flatMap((genre) =>
+    const regularChannels = genres.flatMap((genre) =>
       (genre.channels || []).map((channel) => ({ channel, genre })),
     );
+    const favoritesGenre = displayGenres.find((genre) => genre.id === -1);
+    const favoriteChannels = favoritesGenre
+      ? allFavoriteChannels.map((channel) => ({ channel, genre: favoritesGenre }))
+      : [];
+    const allChannels = [
+      ...favoriteChannels,
+      ...regularChannels.filter(({ channel }) => !channel.isFavorite),
+    ];
     return (
       allChannels.find(({ channel }) => channel.dummyNumber === number) ||
       allChannels.find(({ channel }) => channel.redirectNumber === number) ||
       null
     );
-  }, [dialBuffer, genres]);
+  }, [dialBuffer, genres, displayGenres, allFavoriteChannels]);
 
   // Chunked / Paged list for viewport height (11 items per page)
   const activeChannelIdx = selectedChannelIndex ?? hoveredChannelIndex;
@@ -488,10 +496,18 @@ export default function ChannelPickerPage() {
         return;
       }
 
-      // Collect all channels from all genres
-      const allChannels = genres.flatMap((g) =>
-        (g.channels || []).map((c) => ({ channel: c, genre: g })),
+      // Search favorites first so matching channels resolve to their Favorites row.
+      const regularChannels = genres.flatMap((genre) =>
+        (genre.channels || []).map((channel) => ({ channel, genre })),
       );
+      const favoritesGenre = displayGenres.find((genre) => genre.id === -1);
+      const favoriteChannels = favoritesGenre
+        ? allFavoriteChannels.map((channel) => ({ channel, genre: favoritesGenre }))
+        : [];
+      const allChannels = [
+        ...favoriteChannels,
+        ...regularChannels.filter(({ channel }) => !channel.isFavorite),
+      ];
 
       // Search 1: dummy number
       let match = allChannels.find((item) => item.channel.dummyNumber === targetNum);
@@ -502,15 +518,13 @@ export default function ChannelPickerPage() {
       }
 
       if (match) {
-        // Switch to this channel's genre & channel
+        // Focus the channel in Favorites when it is a favorite; otherwise use its genre row.
         const displayGenreIndex = displayGenres.findIndex((g) => g.id === match.genre.id);
-        const channelGenre = genres.find((g) => g.id === match.genre.id);
-        if (displayGenreIndex >= 0 && channelGenre) {
+        const displayChannelList = displayGenres[displayGenreIndex]?.channels || [];
+        if (displayGenreIndex >= 0) {
           setSelectedGenreIndex(displayGenreIndex);
           setFocusedColumn("channels");
-          const cIdx = (channelGenre.channels || []).findIndex(
-            (c) => c.id === match.channel.id,
-          );
+          const cIdx = displayChannelList.findIndex((channel) => channel.id === match.channel.id);
           if (cIdx >= 0) {
             setSelectedChannelIndex(cIdx);
             setHoveredChannelIndex(cIdx);
@@ -521,7 +535,7 @@ export default function ChannelPickerPage() {
         void handleTune(match.channel);
       }
     },
-    [genres, displayGenres, handleTune, focusChannelRow],
+    [genres, displayGenres, allFavoriteChannels, handleTune, focusChannelRow],
   );
 
   // Direct number key buffering (Point 5)
