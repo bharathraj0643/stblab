@@ -761,6 +761,16 @@ button:focus,
   transition: width 0.1s linear;
 }
 
+.channel-step-countdown {
+  width: 100%;
+  animation: channelStepCountdown 3s linear forwards;
+  transition: none;
+}
+
+@keyframes channelStepCountdown {
+  to { width: 0%; }
+}
+
 /* Instructions card */
 .hints-card {
   background: rgba(255, 255, 255, 0.02);

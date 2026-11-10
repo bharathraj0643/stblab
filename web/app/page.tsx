@@ -225,6 +225,20 @@ export default function ChannelPickerPage() {
   const dialTimerRef = useRef<number | null>(null);
   const dialIntervalRef = useRef<number | null>(null);
   const channelStepAutoTuneTimerRef = useRef<number | null>(null);
+  const channelStepPreviewIdRef = useRef(0);
+  const [channelStepPreview, setChannelStepPreview] = useState<{
+    channel: Channel;
+    direction: "up" | "down";
+    id: number;
+  } | null>(null);
+
+  const cancelPendingChannelStepTune = useCallback(() => {
+    if (channelStepAutoTuneTimerRef.current !== null) {
+      window.clearTimeout(channelStepAutoTuneTimerRef.current);
+      channelStepAutoTuneTimerRef.current = null;
+    }
+    setChannelStepPreview(null);
+  }, []);
 
   useEffect(() => () => {
     if (channelStepAutoTuneTimerRef.current !== null) {
@@ -390,10 +404,7 @@ export default function ChannelPickerPage() {
   // Point 7: Main Backend Tuning Logic (only triggered on user action: OK, dial, click)
   const handleTune = useCallback(
     async (channel: Channel, fastTune = false) => {
-      if (channelStepAutoTuneTimerRef.current !== null) {
-        window.clearTimeout(channelStepAutoTuneTimerRef.current);
-        channelStepAutoTuneTimerRef.current = null;
-      }
+      cancelPendingChannelStepTune();
       recentChannelIdsRef.current = [
         channel.id,
         ...recentChannelIdsRef.current.filter((id) => id !== channel.id),
@@ -408,7 +419,7 @@ export default function ChannelPickerPage() {
         setTimeout(() => setTuningStatus(null), 3000);
       }
     },
-    [],
+    [cancelPendingChannelStepTune],
   );
 
   const handleMediaLast = useCallback(() => {
@@ -516,6 +527,7 @@ export default function ChannelPickerPage() {
   // Direct number key buffering (Point 5)
   const handleDigitPress = useCallback(
     (digit: string) => {
+      cancelPendingChannelStepTune();
       const next = (dialBufferRef.current + digit).slice(-3); // Maximum 3 digits
       dialBufferRef.current = next;
       setDialBuffer(next);
@@ -544,13 +556,14 @@ export default function ChannelPickerPage() {
         }, DIAL_TIMEOUT_MS);
       }
     },
-    [executeDialSearch, clearDialer],
+    [executeDialSearch, clearDialer, cancelPendingChannelStepTune],
   );
 
   // ----------------- REMOTE NAVIGATION (Points 1, 2) -----------------
 
   // Channel Down navigation
   const handleChannelDown = useCallback(() => {
+    cancelPendingChannelStepTune();
     if (focusedColumn === "genre") {
       // Cyclic genre navigation
       if (displayGenres.length === 0) return;
@@ -581,10 +594,12 @@ export default function ChannelPickerPage() {
     selectedChannelIndex,
     focusChannelRow,
     selectGenreRememberingChannelPosition,
+    cancelPendingChannelStepTune,
   ]);
 
   // Channel Up navigation
   const handleChannelUp = useCallback(() => {
+    cancelPendingChannelStepTune();
     if (focusedColumn === "genre") {
       // Cyclic genre navigation: wrap from top to bottom
       if (displayGenres.length === 0) return;
@@ -616,6 +631,7 @@ export default function ChannelPickerPage() {
     selectedChannelIndex,
     focusChannelRow,
     selectGenreRememberingChannelPosition,
+    cancelPendingChannelStepTune,
   ]);
 
   // Physical CH+ / CH- keys select immediately and tune after three seconds of inactivity.
@@ -631,12 +647,13 @@ export default function ChannelPickerPage() {
       setSelectedChannelIndex(targetIndex);
       setHoveredChannelIndex(targetIndex);
       focusChannelRow(targetIndex);
-      setTuningStatus(`Auto-tune in 3s: ${currentChannels[targetIndex].name}`);
 
       if (channelStepAutoTuneTimerRef.current !== null) {
         window.clearTimeout(channelStepAutoTuneTimerRef.current);
       }
       const targetChannel = currentChannels[targetIndex];
+      const previewId = ++channelStepPreviewIdRef.current;
+      setChannelStepPreview({ channel: targetChannel, direction, id: previewId });
       channelStepAutoTuneTimerRef.current = window.setTimeout(() => {
         channelStepAutoTuneTimerRef.current = null;
         void handleTune(targetChannel, true);
@@ -727,8 +744,7 @@ export default function ChannelPickerPage() {
 
       // Any other key is regular navigation/input and cancels a pending CH auto-tune.
       if (!isChDown && !isChUp && channelStepAutoTuneTimerRef.current !== null) {
-        window.clearTimeout(channelStepAutoTuneTimerRef.current);
-        channelStepAutoTuneTimerRef.current = null;
+        cancelPendingChannelStepTune();
         setTuningStatus(null);
       }
 
@@ -848,6 +864,7 @@ export default function ChannelPickerPage() {
     handleDigitPress,
     currentChannels.length,
     focusChannelRow,
+    cancelPendingChannelStepTune,
   ]);
 
   return (
@@ -1055,6 +1072,22 @@ export default function ChannelPickerPage() {
                 <div
                   className="dialer-bar"
                   style={{ width: `${dialProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {!dialBuffer && channelStepPreview && (
+            <div className="dialer-badge channel-step-preview" aria-live="polite">
+              <div className="dialer-label">
+                Channel {channelStepPreview.direction === "up" ? "Up" : "Down"}
+              </div>
+              <div className="dialer-digits">{channelStepPreview.channel.dummyNumber}</div>
+              <div className="dialer-match">{channelStepPreview.channel.name}</div>
+              <div className="dialer-progress">
+                <div
+                  key={channelStepPreview.id}
+                  className="dialer-bar channel-step-countdown"
                 />
               </div>
             </div>
