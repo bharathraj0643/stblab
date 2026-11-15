@@ -1,0 +1,27 @@
+# ── .NET ───────────────────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+publish/
+
+# ── Node / Next.js ─────────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Secrets ────────────────────────────────────────────────────────────────────
+# The pairing certificate and its private key are a durable credential that
+# controls the device. They live outside the repository by default (~/stb-lab),
+# and these patterns are a second line of defence against committing them.
+*.pem
+*.key
+*.pfx
+*.p12
+
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
