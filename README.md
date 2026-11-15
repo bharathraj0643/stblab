@@ -5,7 +5,7 @@ StbLab lets you browse and tune an Airtel Xstream TV channel guide, and control 
 ## Choose a setup
 
 | Folder | Setup | How it works | Download |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | [`method-1_laptop`](method-1_laptop/README.md) | Laptop and browser | Runs the backend on a laptop. Open the web page from a phone or TV browser on the same network. | [releases](https://github.com/bharathraj0643/stblab/releases) |
 | [`method-2_phone-or-tv`](method-2_phone-or-tv/README.md) | Android host | Runs the backend on android host and remote client on any browser tv or phone. | [releases](https://github.com/bharathraj0643/stblab-phone-or-tv/releases) |
 | [`method-3_gui-recommended-method`](method-3_gui-recommended-method/README.md) | Native Android TV app | Runs the picker and remote controls directly as a native Android app, without a LAN web server or browser. intended to be used on android tv only, although it runs on android phone too, but ui controls are designed for a tv remote. | [releases](https://github.com/bharathraj0643/stblab-gui/releases) |
