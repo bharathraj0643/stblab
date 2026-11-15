@@ -1,3 +1,6 @@
 [submodule "method-2_phone-or-tv"]
 	path = method-2_phone-or-tv
 	url = https://github.com/bharathraj0643/stblab-phone-or-tv.git
+[submodule "method-3_gui-recommended-method"]
+	path = method-3_gui-recommended-method
+	url = https://github.com/bharathraj0643/stblab-gui.git

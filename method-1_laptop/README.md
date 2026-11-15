@@ -12,11 +12,11 @@ credit :
   -[https://github.com/Vijayapardhu/xstream-remote](https://github.com/Vijayapardhu/xstream-remote)
 
   
-  Note : someone should take my project and make the server and client directly on mobile itself.
-  
   [Fully Kiosk Browser](https://play.google.com/store/apps/details?id=de.ozerov.fully) : best browser for tv remote navigation for this purpose of changing channels, use this browser on Android tv.
 
   [tvQuickActions](https://play.google.com/store/apps/details?id=dev.vodik7.tvquickactions.free&pcampaignid=web_share) : use this to map advanced keycodes for Favorites button, recall previous channel button, quick launch this website from the option key button all from the physical Airtel Remote.
+
+  [atvtools on phone](https://play.google.com/store/apps/details?id=dev.vodik7.atvtools&pcampaignid=web_share) : it can be used for installing android apk on tv (since airtel box is locked), via tv adb option.
 </div>
 
 
